@@ -1,0 +1,100 @@
+{
+  "name": "dsh-autoconfig",
+  "version": "0.1.2",
+  "description": "Network device auto-configuration terminal for DSH Web UI: connect to routers, switches and firewalls over SSH, Telnet, serial console or SFTP; every agent operation is visible in the right-side terminal and recorded to a per-device log named by hostname, timestamp and IP.",
+  "icon": "./icon.svg",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./typert": {
+      "default": "./lib/typert.js"
+    },
+    "./remote": {
+      "default": "./lib/remote.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "locale",
+    "cordis.patch.yml",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "LICENSE",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime"
+      ],
+      "platform": "web"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "ssh",
+    "telnet",
+    "serial",
+    "console",
+    "sftp",
+    "router",
+    "switch",
+    "firewall",
+    "terminal",
+    "xterm",
+    "network-automation",
+    "device-management",
+    "ssh-client"
+  ],
+  "dependencies": {
+    "serialport": "^13.0.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.1.5-alpha.1",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.1.5-alpha.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.5-rc.3",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.5-rc.3",
+    "@types/node": "^24.0.0",
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/xterm": "5.5.0",
+    "esbuild": "^0.24.2",
+    "react": "^18.3.1",
+    "ssh2": "^1.17.0",
+    "zod": "^4.4.3"
+  },
+  "engines": {
+    "dsh": ">=0.2.0"
+  },
+  "scripts": {
+    "gen:xterm-css": "node scripts/gen-xterm-css.mjs",
+    "build:host": "node scripts/build-host.mjs",
+    "build:client": "node scripts/build-client.mjs",
+    "build": "node scripts/gen-xterm-css.mjs && node scripts/build-host.mjs && node scripts/build-client.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liuxin4566-web/dsh-autoconfig.git"
+  },
+  "homepage": "https://github.com/liuxin4566-web/dsh-autoconfig#readme",
+  "bugs": {
+    "url": "https://github.com/liuxin4566-web/dsh-autoconfig/issues"
+  },
+  "author": "liuxin4566-web"
+}

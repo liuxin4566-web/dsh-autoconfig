@@ -1,0 +1,5 @@
+# dsh-autoconfig bundle patch: registers the auto-configuration terminal plugin.
+# Install with: dsh plugin --profile desktop add <path-to-package>
+- insert:
+    - id: autoconfig
+      name: 'dsh-autoconfig'

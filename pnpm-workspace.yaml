@@ -1,0 +1,11 @@
+packages:
+  - .
+
+nodeLinker: hoisted
+shamefullyHoist: true
+
+allowBuilds:
+  '@serialport/bindings-cpp@13.0.0': true
+  'cpu-features@0.0.10': true
+  'esbuild@0.24.2': true
+  'ssh2@1.17.0': true
