@@ -1,8 +1,8 @@
 /**
  * Build the host faces (service entry + typert/remote artifacts) as ESM for
- * Node. @deepseek-ai/*, ssh2 and serialport stay external (resolved from the
- * profile's node_modules at runtime); zod and the local SFTP helpers are
- * bundled so the plugin has no extra runtime dependency.
+ * Node. @deepseek-ai/*, serialport and native `.node` addons stay external;
+ * ssh2 itself (pure JS) is bundled so the tarball works without a profile
+ * dependency edge. zod and the local SFTP helpers are bundled too.
  */
 import { build } from "esbuild";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -40,7 +40,10 @@ await build({
   // when DSH's profile resolver has no pnpm-recorded dependency edge for it.
   // serialport is a native binding and must stay external; cpu-features is an
   // optional native ssh2 dependency that ssh2 probes defensively.
-  external: ["@deepseek-ai/*", "serialport", "@serialport/*", "cpu-features"],
+  // `*.node` matters on Linux CI: ssh2 probes an optional native binding and
+  // esbuild cannot parse it. Keeping the require external lets ssh2 fall back
+  // to its pure-JS implementation when the addon is absent.
+  external: ["@deepseek-ai/*", "serialport", "@serialport/*", "cpu-features", "*.node"],
   logLevel: "info"
 });
 for (const file of ["index.js", "typert.js", "remote.js"]) {
