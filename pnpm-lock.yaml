@@ -11,9 +11,6 @@ importers:
       serialport:
         specifier: ^13.0.0
         version: 13.0.0
-      ssh2:
-        specifier: ^1.17.0
-        version: 1.17.0
     devDependencies:
       '@deepseek-ai/dsh-tools':
         specifier: 0.1.5-rc.3
@@ -36,6 +33,9 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
+      ssh2:
+        specifier: ^1.17.0
+        version: 1.17.0
       zod:
         specifier: ^4.4.3
         version: 4.6.7
