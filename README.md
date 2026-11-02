@@ -1,6 +1,7 @@
 # dsh-autoconfig
 
 [![GitHub](https://img.shields.io/badge/GitHub-liuxin4566--web%2Fdsh--autoconfig-181717?logo=github)](https://github.com/liuxin4566-web/dsh-autoconfig)
+[![CI](https://github.com/liuxin4566-web/dsh-autoconfig/actions/workflows/ci.yml/badge.svg)](https://github.com/liuxin4566-web/dsh-autoconfig/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-0e7490)](https://github.com/topics/dsh-plugin)
 
