@@ -216,6 +216,8 @@ export function AutoconfigPanel({ api }) {
           </button>
         ))}
         <button type="button" className="ac-btn ac-add" onClick={() => { setDialogProfile(null); setDialogProtocol("ssh"); }} title="连接新设备">+ 连接</button>
+        <button type="button" className="ac-btn" onClick={() => setRagTab("docs")} title="手册知识库：上传、建索引、管理计划">知识库</button>
+        <button type="button" className="ac-btn" onClick={() => setRagTab("plans")} title="配置计划：审批与执行">计划</button>
       </div>
 
       {error && <div className="ac-error">{error}</div>}
