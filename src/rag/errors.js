@@ -78,7 +78,27 @@ export function classifyOutput(raw, { vendorId, timedOut = false, expectOk = [] 
 
 export async function recordErrorCase(entry) {
   await mkdir(join(homedir(), ".dsh"), { recursive: true });
-  const record = { ...entry, recordedAt: new Date().toISOString() };
+  // Keep a stable key set: a missing field must not become `undefined`, which
+  // would make the JSON snapshot of a later plan invalid.
+  const record = {
+    vendor: "",
+    platform: "",
+    model: "",
+    version: "",
+    command: "",
+    errorText: "",
+    token: "",
+    caretColumn: null,
+    docId: "",
+    planId: "",
+    stepId: "",
+    fix: "",
+    ...entry,
+    recordedAt: new Date().toISOString()
+  };
+  for (const key of Object.keys(record)) {
+    if (record[key] === undefined) record[key] = "";
+  }
   await appendFile(ERROR_FILE, `${JSON.stringify(record)}\n`, "utf8");
   return record;
 }
@@ -118,13 +138,13 @@ export async function findPitfalls({ vendor, command, query, limit = 3 } = {}) {
   }).filter((item) => item.score > 0).sort((left, right) => right.score - left.score);
   return scored.slice(0, limit).map(({ record, score }) => ({
     score,
-    vendor: record.vendor,
-    model: record.model,
-    version: record.version,
-    command: record.command,
-    token: record.token,
-    errorText: record.errorText,
-    fix: record.fix,
-    docId: record.docId
+    vendor: record.vendor ?? "",
+    model: record.model ?? "",
+    version: record.version ?? "",
+    command: record.command ?? "",
+    token: record.token ?? "",
+    errorText: record.errorText ?? "",
+    fix: record.fix ?? "",
+    docId: record.docId ?? ""
   }));
 }
