@@ -1,6 +1,6 @@
 {
   "name": "dsh-autoconfig",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Network device auto-configuration terminal for DSH Web UI: connect to routers, switches and firewalls over SSH, Telnet, serial console or SFTP; every agent operation is visible in the right-side terminal and recorded to a per-device log named by hostname, timestamp and IP.",
   "icon": "./icon.svg",
   "license": "MIT",
