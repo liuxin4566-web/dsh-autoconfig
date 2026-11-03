@@ -139,7 +139,17 @@ def _parse_versions(value) -> list[dict]:
             return result
     except Exception:
         pass
-    return [{"raw": part.strip()} for part in re.split(r"[,，;；]", value) if part.strip()]
+    result = []
+    for part in re.split(r"[,，;；]", value):
+        part = part.strip()
+        if not part:
+            continue
+        match = re.fullmatch(r"([0-9][0-9.]*)\s*[-~]\s*([0-9][0-9.]*)", part)
+        if match:
+            result.append({"min": match.group(1), "max": match.group(2)})
+        else:
+            result.append({"raw": part})
+    return result
 
 
 def create_app(settings: Settings, embedder: Embedder, reranker, registry: Registry) -> FastAPI:

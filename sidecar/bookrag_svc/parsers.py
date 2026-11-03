@@ -289,6 +289,9 @@ def _html_to_markdown(text: str) -> str:
         converted = html.unescape(converted)
     converted = re.sub(r"\n{3,}", "\n\n", converted)
     converted = re.sub(r"[ \t]+\n", "\n", converted)
+    # CHM pages cross-link to sibling .html files; keep the anchor text (often a
+    # section title) but drop the URL noise from BM25 and embeddings.
+    converted = re.sub(r"\[([^\]]+)\]\((?:\.{0,2}/|/)[^)]*\.html?[^)]*\)", r"\1", converted, flags=re.IGNORECASE)
     return converted.strip()
 
 

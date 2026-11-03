@@ -364,7 +364,7 @@ export class PlanEngine {
       }
       if (result.status === "unknown") {
         step.status = "unknown";
-        step.error = { message: "命令执行后未在超时内看到提示符", command: command.text };
+        step.error = result.error ?? { message: "命令执行后未在超时内看到提示符", command: command.text };
         return { stepId: step.stepId, status: "unknown", error: step.error, outputs: summarizeOutputs(outputs) };
       }
     }
@@ -410,6 +410,20 @@ export class PlanEngine {
         });
     const result = await runner;
     let raw = result.text;
+    if (result.needsReply) {
+      return {
+        command: command.text,
+        explanation: command.explanation,
+        status: "unknown",
+        output: cleanCommandOutput(raw, command.text).slice(0, 4_000),
+        durationMs: Date.now() - started,
+        error: {
+          message: `设备在等待交互确认，计划未提供对应 reply：${result.prompt}`,
+          command: command.text,
+          prompt: result.prompt
+        }
+      };
+    }
     const classification = classifyOutput(raw, { vendorId: vendor.id, timedOut: result.timedOut });
     const output = cleanCommandOutput(raw, command.text);
     const entry = {

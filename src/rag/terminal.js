@@ -110,21 +110,37 @@ export async function runCommand(service, conn, command, { vendor, timeoutMs = D
  * Send a command that asks for confirmation (save / reboot / delete). The reply
  * is sent only after the device's confirmation pattern appears, never blindly.
  */
-export async function runInteractive(service, conn, command, { vendor, reply, replyWhen = /(?:\[Y\/N\]|\(y\/n\)|Are you sure|\[confirm\]|Please input)/i, timeoutMs = DEFAULT_PROMPT_TIMEOUT_MS, source = "plan", note = "" } = {}) {
+export async function runInteractive(service, conn, command, { vendor, reply, replyWhen = /(?:\[Y\/N\]|\(y\/n\)|Are you sure|\[confirm\]|Please input|press the enter key)/i, timeoutMs = DEFAULT_PROMPT_TIMEOUT_MS, source = "plan", note = "" } = {}) {
   const startedAt = Date.now();
   let offset = conn.journal.length;
   writeCommand(service, conn, command, { source, note });
   let collected = "";
-  let replied = false;
+  const pending = Array.isArray(reply) ? [...reply] : (reply ? [reply] : []);
+  let replied = 0;
+  let lastPromptTail = "";
+  const ENTER_PROMPT = /(?:press the enter key|file name|filename|\[flash:|\(To leave)/i;
   while (Date.now() - startedAt < timeoutMs) {
     if (conn.exit !== null) break;
     const { text, next } = readFrom(conn, offset);
     offset = next;
     if (text) {
       collected += text;
-      if (!replied && reply && replyWhen.test(tailText(collected, 500))) {
-        writeRawMarked(service, conn, `${reply}\r`, { source: `${source} reply` });
-        replied = true;
+      const lines = tailText(collected, 400).split(/\r?\n/).filter((line) => line.trim() !== "");
+      const lastLine = lines.length ? lines[lines.length - 1].trim() : "";
+      if (lastLine && replyWhen.test(lastLine) && lastLine !== lastPromptTail) {
+        lastPromptTail = lastLine;
+        if (pending.length) {
+          const answer = String(pending.shift());
+          writeRawMarked(service, conn, `${answer}\r`, { source: `${source} reply` });
+          replied += 1;
+        } else if (ENTER_PROMPT.test(lastLine)) {
+          // Keep the device's default file name with an empty line.
+          writeRawMarked(service, conn, "\r", { source: `${source} reply` });
+          replied += 1;
+        } else {
+          // A confirmation with no scripted answer must not be guessed.
+          return { command, text: collected, prompt: lastLine, timedOut: false, replied, needsReply: true };
+        }
       }
     }
     if (collected && isPrompt(collected, vendor) && Date.now() - startedAt > 200) {

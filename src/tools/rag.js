@@ -8,6 +8,12 @@
  */
 import { defineTool } from "@deepseek-ai/dsh-tools";
 
+function compactProfile(profile) {
+  if (!profile) return profile;
+  const { raw, ...rest } = profile;
+  return rest;
+}
+
 function summarizeHit(hit) {
   return {
     docId: hit.docId,
@@ -153,10 +159,10 @@ export function registerRagTools(ctx, manager) {
       const connectionId = args.connection_id;
       if (!args.refresh) {
         const cached = await manager.profile(connectionId);
-        if (cached) return { profile: cached, cached: true };
+        if (cached) return { profile: compactProfile(cached), cached: true };
       }
       const profile = await manager.collect(connectionId, args.vendor ?? null);
-      return { profile, cached: false };
+      return { profile: compactProfile(profile), cached: false };
     }
   }));
 
@@ -196,7 +202,13 @@ export function registerRagTools(ctx, manager) {
                       text: { type: "string", required: true },
                       explanation: { type: "string", required: true },
                       risk: { type: "string", enum: ["low", "medium", "high", "critical"] },
-                      reply: { type: "string", description: "Answer to an interactive [Y/N] prompt, if any." }
+                      reply: {
+                        oneOf: [
+                          { type: "string" },
+                          { type: "array", items: { type: "string" } }
+                        ],
+                        description: "Answers to interactive [Y/N] or file-name prompts, in order. An empty string presses Enter (keep the default)."
+                      }
                     }
                   }
                 },
