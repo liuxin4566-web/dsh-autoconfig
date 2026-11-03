@@ -7,6 +7,10 @@
 
 给 DSH（DeepSeek Harness）用的网络设备自动配置终端插件。基于 [dsh-ssh-ops](https://github.com/caoyiwei850/dsh-ssh-ops) 的「主对话驱动 + 右侧终端」架构重新实现，面向路由器、交换机、防火墙等设备的日常配置与排障。
 
+> **安全提示（重要）**：SSH 主机密钥校验默认关闭（`hostVerifier: () => true`），存在中间人攻击风险。请仅在可信管理网络使用；需要校验时，修改 `src/transport-ssh.js` 中的 `hostVerifier`，接入 `~/.ssh/known_hosts` 或设备指纹白名单。详见文末[安全说明](#安全说明)。
+>
+> **原生依赖**：串口功能依赖 `serialport` 原生绑定。pnpm/DSH 安装器通常会写入 `allowBuilds` 并重试，但若本机没有预编译包且缺少编译工具链，安装可能失败。Windows 需要 Visual Studio Build Tools 的“使用 C++ 的桌面开发”和 Python 3；Linux 需要 `build-essential` 与 `python3`。**不使用串口时，SSH/Telnet/SFTP 不受影响。**
+
 ## 功能
 
 - **右侧终端面板**：在官方右侧边栏注册「自动配置终端」标签页。AI 的每一次连接、输入、读取和 SFTP 操作都会显示在同一个终端里，操作者可以全程审计。
@@ -26,20 +30,26 @@
 
 ## 安装
 
-### 方式一：npm（发布后）
+### 方式一：GitHub 源码（当前可用，推荐）
+
+```powershell
+dsh plugin --profile desktop add github:liuxin4566-web/dsh-autoconfig
+# Web profile：
+dsh plugin --profile web add github:liuxin4566-web/dsh-autoconfig
+```
+
+等价写法：`dsh plugin --profile desktop add git+https://github.com/liuxin4566-web/dsh-autoconfig.git`。
+
+### 方式二：npm（发布后）
+
+> npm 包名 `dsh-autoconfig` 已预留，发布完成后本节命令即可使用；之后会自动进入 DSH 内置插件中心。
 
 ```powershell
 dsh plugin --profile desktop add dsh-autoconfig
 # 或 dsh plugin --profile web add dsh-autoconfig
 ```
 
-也可以直接从 GitHub 安装：
-
-```powershell
-dsh plugin --profile desktop add git+https://github.com/liuxin4566-web/dsh-autoconfig.git
-```
-
-### 方式二：本地 tgz（当前开发版推荐）
+### 方式三：本地 tgz
 
 ```powershell
 # 在插件源码目录构建并打包
@@ -62,7 +72,7 @@ npx @deepseek-ai/dsh plugin --profile desktop add .\dsh-autoconfig-0.1.2.tgz
 
 ### 串口依赖
 
-`serialport` 带原生预编译绑定。若 profile 的 pnpm 拦截了构建脚本，需要允许：
+`serialport` 带原生绑定，常见平台会优先使用预编译包。若 profile 的 pnpm 拦截了构建脚本，需要允许：
 
 ```yaml
 # ~/.dsh/profiles/desktop/pnpm-workspace.yaml
@@ -70,7 +80,13 @@ allowBuilds:
   '@serialport/bindings-cpp@13.0.0': true
 ```
 
-然后重新执行安装命令。SSH/Telnet/SFTP 不依赖串口绑定，即使 `serialport` 不可用也可正常使用。
+然后重新执行安装命令。若没有匹配的预编译包，需要本机编译：
+
+- **Windows**：安装 [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)，勾选“使用 C++ 的桌面开发”，并安装 Python 3。
+- **Linux**：`sudo apt-get install -y build-essential python3`。
+- **macOS**：安装 Xcode Command Line Tools：`xcode-select --install`。
+
+SSH/Telnet/SFTP 不依赖串口绑定；即使 `serialport` 不可用，这三类连接仍可正常使用。
 
 ## 使用
 
