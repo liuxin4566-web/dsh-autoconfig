@@ -1,6 +1,7 @@
 # dsh-autoconfig
 
 [![GitHub](https://img.shields.io/badge/GitHub-liuxin4566--web%2Fdsh--autoconfig-181717?logo=github)](https://github.com/liuxin4566-web/dsh-autoconfig)
+[![npm](https://img.shields.io/npm/v/dsh-autoconfig.svg)](https://www.npmjs.com/package/dsh-autoconfig)
 [![CI](https://github.com/liuxin4566-web/dsh-autoconfig/actions/workflows/ci.yml/badge.svg)](https://github.com/liuxin4566-web/dsh-autoconfig/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-0e7490)](https://github.com/topics/dsh-plugin)
@@ -30,7 +31,16 @@
 
 ## 安装
 
-### 方式一：GitHub 源码（当前可用，推荐）
+### 方式一：npm（推荐）
+
+已发布到 npm：[dsh-autoconfig](https://www.npmjs.com/package/dsh-autoconfig)
+
+```powershell
+dsh plugin --profile desktop add dsh-autoconfig
+# 或 dsh plugin --profile web add dsh-autoconfig
+```
+
+### 方式二：GitHub 源码
 
 ```powershell
 dsh plugin --profile desktop add github:liuxin4566-web/dsh-autoconfig
@@ -40,15 +50,6 @@ dsh plugin --profile web add github:liuxin4566-web/dsh-autoconfig
 
 等价写法：`dsh plugin --profile desktop add git+https://github.com/liuxin4566-web/dsh-autoconfig.git`。
 
-### 方式二：npm（发布后）
-
-> npm 包名 `dsh-autoconfig` 已预留，发布完成后本节命令即可使用；之后会自动进入 DSH 内置插件中心。
-
-```powershell
-dsh plugin --profile desktop add dsh-autoconfig
-# 或 dsh plugin --profile web add dsh-autoconfig
-```
-
 ### 方式三：本地 tgz
 
 ```powershell
@@ -57,13 +58,13 @@ pnpm install
 pnpm pack
 
 # 安装到 desktop profile（DSH Desktop 使用的 profile 名）
-dsh plugin --profile desktop add .\dsh-autoconfig-0.1.2.tgz
+dsh plugin --profile desktop add .\dsh-autoconfig-0.1.3.tgz
 ```
 
 若 `dsh` 不在 PATH，请使用 DSH 安装目录中的 `dsh`/`dsh.cmd`，或通过官方 npm 包执行：
 
 ```powershell
-npx @deepseek-ai/dsh plugin --profile desktop add .\dsh-autoconfig-0.1.2.tgz
+npx @deepseek-ai/dsh plugin --profile desktop add .\dsh-autoconfig-0.1.3.tgz
 ```
 
 `dsh plugin add` 会把包加入 profile 依赖，并自动把声明了 `dsh.bundle` 的包加入 `dsh.profile.bundles`。当前 DSH 桌面版是 live profile，通常会热加载；若没有出现标签页，完全退出并重启 DSH Desktop。
