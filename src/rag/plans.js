@@ -174,6 +174,9 @@ export class PlanEngine {
     await this._ensureDir();
     plan.updatedAt = new Date().toISOString();
     plan.planHash = canonicalHash(plan);
+    // A plan is persisted and also returned to the model; strip undefined /
+    // function values so both the JSON file and the tool snapshot stay valid.
+    plan = JSON.parse(JSON.stringify(plan));
     await writeFile(join(PLAN_DIR, `${plan.planId}.json`), JSON.stringify(plan, null, 2), "utf8");
     return plan;
   }

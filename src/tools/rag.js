@@ -223,27 +223,29 @@ export function registerRagTools(ctx, manager) {
     output: {
       schema: { type: "object", additionalProperties: true },
       render(_args, value) {
-        return [{ type: "text", text: `${planText(value.plan)}\n\n状态：${value.plan.approval.status}。请在右侧「计划」抽屉批准后调用 plan_execute。` }];
+        return [{ type: "text", text: `${planText(value)}\n\n状态：${value.approval}。请在右侧「计划」抽屉批准后调用 plan_execute。` }];
       }
     },
     async execute(args) {
       const plan = await manager.createPlan(args.plan);
+      // Return only lossless primitives: the host snapshots tool output and
+      // rejects any undefined/function value, including ones nested in the
+      // original plan record.
       return {
-        planId: plan.planId,
-        plan: {
-          planId: plan.planId,
-          risk: plan.risk,
-          status: plan.status,
-          approval: plan.approval,
-          warnings: plan.warnings,
-          pitfalls: plan.pitfalls ?? [],
-          steps: plan.steps.map((step) => ({
-            stepId: step.stepId,
-            title: step.title,
-            risk: step.risk,
-            commands: step.commands.map((command) => ({ text: command.text, explanation: command.explanation }))
+        planId: String(plan.planId),
+        risk: String(plan.risk ?? "low"),
+        status: String(plan.status ?? "draft"),
+        approval: String(plan.approval?.status ?? "none"),
+        warnings: (plan.warnings ?? []).map((warning) => String(warning)),
+        steps: (plan.steps ?? []).map((step) => ({
+          stepId: String(step.stepId),
+          title: String(step.title ?? ""),
+          risk: String(step.risk ?? "low"),
+          commands: (step.commands ?? []).map((command) => ({
+            text: String(command.text ?? ""),
+            explanation: String(command.explanation ?? "")
           }))
-        }
+        }))
       };
     }
   }));
