@@ -58,13 +58,13 @@ pnpm install
 pnpm pack
 
 # 安装到 desktop profile（DSH Desktop 使用的 profile 名）
-dsh plugin --profile desktop add .\dsh-autoconfig-0.1.2.tgz
+dsh plugin --profile desktop add .\dsh-autoconfig-0.1.3.tgz
 ```
 
 若 `dsh` 不在 PATH，请使用 DSH 安装目录中的 `dsh`/`dsh.cmd`，或通过官方 npm 包执行：
 
 ```powershell
-npx @deepseek-ai/dsh plugin --profile desktop add .\dsh-autoconfig-0.1.2.tgz
+npx @deepseek-ai/dsh plugin --profile desktop add .\dsh-autoconfig-0.1.3.tgz
 ```
 
 `dsh plugin add` 会把包加入 profile 依赖，并自动把声明了 `dsh.bundle` 的包加入 `dsh.profile.bundles`。当前 DSH 桌面版是 live profile，通常会热加载；若没有出现标签页，完全退出并重启 DSH Desktop。
