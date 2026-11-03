@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { canonicalHash, validatePlanInput } from "../src/rag/plans.js";
 import { findError, classifyOutput } from "../src/rag/errors.js";
 import { matchDocument } from "../src/rag/manager.js";
+import { registerRagTools } from "../src/tools/rag.js";
 
 test("plan validation rejects a command without explanation", () => {
   const { errors } = validatePlanInput({
@@ -60,4 +61,28 @@ test("document matching prefers vendor/model/version agreement", () => {
   assert.equal(matchDocument(doc, { vendor: "h3c", model: "S5820V2-54QS-GE", version: "7.1.075" }).status, "exact");
   assert.equal(matchDocument(doc, { vendor: "h3c", model: "S5820V2-54QS-GE", version: "9.5.0.2" }).status, "partial");
   assert.equal(matchDocument(doc, { vendor: "huawei", model: "S5820V2", version: "7.1.075" }).status, "mismatch");
+});
+
+test("plan_create returns lossless JSON even when the plan has undefined fields", async () => {
+  const tools = [];
+  const manager = {
+    async createPlan() {
+      return {
+        planId: "p1",
+        risk: "low",
+        status: "draft",
+        approval: { status: "none" },
+        warnings: [],
+        pitfalls: [{ model: undefined, command: "x" }],
+        steps: [{ stepId: "s1", title: "t", risk: "low", commands: [{ text: "vlan 1", explanation: "e" }] }]
+      };
+    }
+  };
+  registerRagTools({ tools: { register: (tool) => tools.push(tool) } }, manager);
+  const tool = tools.find((item) => item.name === "plan_create");
+  const value = await tool.execute({ plan: { steps: [{ commands: [{ text: "vlan 1", explanation: "e" }] }] } });
+  assert.deepEqual(JSON.parse(JSON.stringify(value)), value);
+  assert.equal(value.steps[0].commands[0].text, "vlan 1");
+  const rendered = tool.output.render({}, value);
+  assert.match(rendered[0].text, /vlan 1/);
 });
