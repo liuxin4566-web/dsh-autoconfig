@@ -170,6 +170,8 @@ export function registerRagTools(ctx, manager) {
     name: "plan_create",
     description:
       "Create a reviewable configuration plan. Use the exact commands and section citations from kb_search. " +
+      "The tool detects the current CLI view from the terminal prompt and adapts the plan: removes a redundant system-view when already in system view, " +
+      "prepends system-view when the device is in user view, and warns when the session is in a sub-view. " +
       "Every command needs a Chinese explanation; config-changing steps need verify commands and rollback where possible. " +
       "The plan is NOT executed here: the operator must approve the whole plan in the right-side 「计划」 drawer, then call plan_execute. " +
       "Never send configuration through device_send directly.",
@@ -223,7 +225,13 @@ export function registerRagTools(ctx, manager) {
     output: {
       schema: { type: "object", additionalProperties: true },
       render(_args, value) {
-        return [{ type: "text", text: `${planText(value)}\n\n状态：${value.approval}。请在右侧「计划」抽屉批准后调用 plan_execute。` }];
+        const modeLine = value.mode?.detected && value.mode.detected !== "unknown"
+          ? `当前终端视图：${value.mode.label}（${value.mode.prompt}）`
+          : "当前终端视图：未识别";
+        const adjustmentLines = value.adjustments?.length
+          ? `\n视图适配：\n${value.adjustments.map((item) => `- ${item}`).join("\n")}`
+          : "";
+        return [{ type: "text", text: `${modeLine}${adjustmentLines}\n\n${planText(value)}\n\n状态：${value.approval}。请在右侧「计划」抽屉批准后调用 plan_execute。` }];
       }
     },
     async execute(args) {
@@ -236,6 +244,12 @@ export function registerRagTools(ctx, manager) {
         risk: String(plan.risk ?? "low"),
         status: String(plan.status ?? "draft"),
         approval: String(plan.approval?.status ?? "none"),
+        mode: {
+          detected: String(plan.mode?.mode ?? "unknown"),
+          label: String(plan.mode?.label ?? "未知视图"),
+          prompt: plan.mode?.prompt ? String(plan.mode.prompt) : ""
+        },
+        adjustments: (plan.adjustments ?? []).map((item) => String(item)),
         warnings: (plan.warnings ?? []).map((warning) => String(warning)),
         steps: (plan.steps ?? []).map((step) => ({
           stepId: String(step.stepId),

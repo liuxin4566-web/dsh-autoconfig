@@ -365,6 +365,12 @@ function PlansTab({ plans, refresh, setError }) {
             <span className="ac-rag-badge" data-tone={plan.approval?.status === "approved" ? "ok" : "warn"}>{plan.approval?.status ?? "none"}</span>
           </div>
           <div className="ac-rag-muted ac-rag-mono" style={{ margin: "4px 0" }}>{plan.planId} · hash {(plan.planHash ?? "").slice(0, 12)}</div>
+          {plan.mode && (
+            <div className="ac-rag-muted">
+              创建时视图：{plan.mode.label}{plan.mode.prompt ? `（${plan.mode.prompt}）` : ""}
+              {plan.adjustments?.length > 0 ? ` · ${plan.adjustments.join("；")}` : ""}
+            </div>
+          )}
           {plan.warnings?.length > 0 && (
             <div className="ac-rag-error" style={{ color: "var(--ac-warn)" }}>{plan.warnings.join("\n")}</div>
           )}

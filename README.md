@@ -31,6 +31,7 @@
 - **手册知识库（0.2.0）**：右侧「知识库」抽屉上传 PDF / CHM / MD 技术手册，填写厂家/系列/型号/适用版本；后台建立 TGM（章节树 + 实体图 + 映射）+ BM25 + 本地向量（bge-m3）混合索引，可选 bge-reranker 重排。
 - **配置计划与审批（0.2.0）**：AI 先 `device_profile` 采集厂商/型号/版本/序列号并与手册核验，再 `kb_search` 取手册依据；`plan_create` 生成的计划包含每条命令的中文解释、验证命令和回滚命令。**整份计划需操作者在「计划」抽屉批准**，批准与命令哈希绑定，改一个字即失效；批准后按步骤写入右侧终端，执行中失败立即暂停。
 - **错误识别与 `?` 自愈（0.2.0）**：识别 Comware / VRP / IOS 的 `^` 错误位置与 `% ... found at '^' position` 提示，用 `?` 逐词探测（不回车、不执行），修正后计划回到 draft 由操作者重新批准；失败样本写入本地案例库并注入后续计划。
+- **视图自适应（0.2.1）**：`plan_create` 读取终端当前提示符（`<H3C>` 用户视图 / `[H3C]` 系统视图 / `[H3C-xxx]` 子视图），已在系统视图时自动移除重复的 `system-view`，在用户视图时自动补充 `system-view`，子视图会给出警告；执行时再次检测，重复的视图切换命令直接跳过并留下 `[plan skip]` 标记。
 
 ## 手册知识库与配置计划（0.2.0）
 
@@ -76,6 +77,8 @@ dsh plugin --profile desktop add dsh-autoconfig
 ```
 
 > **0.2.0 升级提示**：新增了 `kb_*` / `device_profile` / `plan_*` 工具和本地 sidecar。安装后请**完全退出并重启 DSH Desktop**（含托盘），再刷新页面；仅热重载不会刷新工具清单和宿主路由。
+>
+> **0.2.1 升级提示**：`plan_create` 新增终端视图检测与自适应；安装后同样需要完全退出并重启 DSH Desktop，新的 `[plan skip]` 与视图调整逻辑才会生效。
 
 ### 方式二：GitHub 源码
 
@@ -95,13 +98,13 @@ pnpm install
 pnpm pack
 
 # 安装到 desktop profile（DSH Desktop 使用的 profile 名）
-dsh plugin --profile desktop add .\dsh-autoconfig-0.2.0.tgz
+dsh plugin --profile desktop add .\dsh-autoconfig-0.2.1.tgz
 ```
 
 若 `dsh` 不在 PATH，请使用 DSH 安装目录中的 `dsh`/`dsh.cmd`，或通过官方 npm 包执行：
 
 ```powershell
-npx @deepseek-ai/dsh plugin --profile desktop add .\dsh-autoconfig-0.2.0.tgz
+npx @deepseek-ai/dsh plugin --profile desktop add .\dsh-autoconfig-0.2.1.tgz
 ```
 
 `dsh plugin add` 会把包加入 profile 依赖，并自动把声明了 `dsh.bundle` 的包加入 `dsh.profile.bundles`。当前 DSH 桌面版是 live profile，通常会热加载；若没有出现标签页，完全退出并重启 DSH Desktop。

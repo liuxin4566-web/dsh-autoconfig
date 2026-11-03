@@ -24,7 +24,7 @@ from .embedder import Embedder
 from .manifest import Manifest
 from .search import Registry
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 
 class TaskManager:

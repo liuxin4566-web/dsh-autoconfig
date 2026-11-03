@@ -5,6 +5,8 @@ import { canonicalHash, validatePlanInput } from "../src/rag/plans.js";
 import { findError, classifyOutput } from "../src/rag/errors.js";
 import { matchDocument } from "../src/rag/manager.js";
 import { registerRagTools } from "../src/tools/rag.js";
+import { adjustPlanForMode, detectCliMode } from "../src/rag/mode.js";
+import { getVendor } from "../src/rag/vendors.js";
 
 test("plan validation rejects a command without explanation", () => {
   const { errors } = validatePlanInput({
@@ -61,6 +63,47 @@ test("document matching prefers vendor/model/version agreement", () => {
   assert.equal(matchDocument(doc, { vendor: "h3c", model: "S5820V2-54QS-GE", version: "7.1.075" }).status, "exact");
   assert.equal(matchDocument(doc, { vendor: "h3c", model: "S5820V2-54QS-GE", version: "9.5.0.2" }).status, "partial");
   assert.equal(matchDocument(doc, { vendor: "huawei", model: "S5820V2", version: "7.1.075" }).status, "mismatch");
+});
+
+test("CLI mode detection distinguishes user, system and sub-views", () => {
+  assert.equal(detectCliMode("<H3C>").mode, "user");
+  assert.equal(detectCliMode("<H3C>\n[H3C]").mode, "system");
+  assert.equal(detectCliMode("[H3C]\n[H3C-GigabitEthernet1/0/1]").mode, "subview");
+  assert.equal(detectCliMode("SW(config)#").mode, "system");
+  assert.equal(detectCliMode("SW(config-if)#").mode, "subview");
+  assert.equal(detectCliMode("[plan] system-view\n<H3C>").mode, "user");
+});
+
+test("plan creation removes a redundant system-view in system view", () => {
+  const { plan } = validatePlanInput({
+    steps: [{
+      commands: [
+        { text: "system-view", explanation: "进入系统视图" },
+        { text: "vlan 10", explanation: "创建 VLAN 10" }
+      ]
+    }]
+  });
+  const adjusted = adjustPlanForMode(plan, { mode: "system", label: "系统视图", prompt: "[H3C]" }, getVendor("h3c"));
+  assert.equal(adjusted.plan.steps[0].commands[0].text, "vlan 10");
+  assert.ok(adjusted.adjustments.some((item) => item.includes("已移除重复")));
+});
+
+test("plan creation inserts system-view when in user view", () => {
+  const { plan } = validatePlanInput({
+    steps: [{ commands: [{ text: "vlan 10", explanation: "创建 VLAN 10" }] }]
+  });
+  const adjusted = adjustPlanForMode(plan, { mode: "user", label: "用户视图", prompt: "<H3C>" }, getVendor("h3c"));
+  assert.equal(adjusted.plan.steps[0].commands[0].text, "system-view");
+  assert.ok(adjusted.adjustments.some((item) => item.includes("补充")));
+});
+
+test("read-only plans are not given a system-view entry", () => {
+  const { plan } = validatePlanInput({
+    steps: [{ commands: [{ text: "display version", explanation: "查看设备版本信息" }] }]
+  });
+  const adjusted = adjustPlanForMode(plan, { mode: "user", label: "用户视图", prompt: "<H3C>" }, getVendor("h3c"));
+  assert.equal(adjusted.plan.steps[0].commands[0].text, "display version");
+  assert.equal(adjusted.adjustments.length, 0);
 });
 
 test("plan_create returns lossless JSON even when the plan has undefined fields", async () => {

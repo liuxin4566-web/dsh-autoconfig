@@ -11,7 +11,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { getVendor, detectVendorFromText } from "./vendors.js";
 import { classifyOutput, findPitfalls, recordErrorCase } from "./errors.js";
-import { cleanCommandOutput, probeHelp, runCommand, runInteractive, tailText, writeRawMarked } from "./terminal.js";
+import { adjustPlanForMode, detectCliMode, isConfigMode, isEntryCommand, isExitCommand } from "./mode.js";
+import { cleanCommandOutput, probeHelp, runCommand, runInteractive, tailText, waitForPrompt, writeRawMarked } from "./terminal.js";
 
 export const PLAN_DIR = join(homedir(), ".dsh", "autoconfig-plans");
 const MAX_STEPS = 40;
@@ -242,6 +243,18 @@ export class PlanEngine {
         hostname: conn.hostname
       };
     }
+    const vendor = getVendor(plan.device?.vendor) ?? this._vendorForConn(conn);
+    const modeInfo = await this._ensureMode(conn, vendor);
+    const adjusted = adjustPlanForMode(plan, modeInfo, vendor);
+    if (!adjusted.plan.steps?.length) {
+      const error = new Error(`视图适配后计划为空：${adjusted.warnings.join("；") || "没有可执行命令"}`);
+      error.code = "plan-invalid";
+      throw error;
+    }
+    plan.steps = adjusted.plan.steps;
+    plan.mode = { ...modeInfo, detectedAt: new Date().toISOString() };
+    plan.adjustments = adjusted.adjustments;
+    plan.warnings = [...plan.warnings, ...adjusted.warnings];
     const pitfalls = await findPitfalls({
       vendor: plan.device?.vendor,
       command: plan.steps.flatMap((step) => step.commands.map((command) => command.text)).join(" "),
@@ -287,6 +300,23 @@ export class PlanEngine {
     if (/<H3C>|\[H3C/.test(tail)) return getVendor("h3c");
     if (/<[A-Za-z0-9._-]+>/.test(tail)) return getVendor("huawei");
     return null;
+  }
+
+  _detectMode(conn, vendor) {
+    if (!conn) return { mode: "unknown", label: "未知视图", prompt: null };
+    return detectCliMode(conn.journal.readWindow(undefined, 8_000).data, vendor);
+  }
+
+  /** If the journal has no prompt yet, press a bare Enter once and re-read. */
+  async _ensureMode(conn, vendor) {
+    let mode = this._detectMode(conn, vendor);
+    if (mode.mode !== "unknown") return mode;
+    const startedAt = Date.now();
+    const offset = conn.journal.length;
+    writeRawMarked(this.service, conn, "\r", { source: "mode" });
+    await waitForPrompt(this.service, conn, { vendor, timeoutMs: 3_000, startedAt, initialOffset: offset }).catch(() => null);
+    mode = this._detectMode(conn, vendor);
+    return mode;
   }
 
   async _runPlanCommands(plan) {
@@ -396,6 +426,30 @@ export class PlanEngine {
 
   async _executeCommand(conn, vendor, plan, step, command) {
     const started = Date.now();
+    const modeInfo = this._detectMode(conn, vendor);
+    const text = String(command.text ?? "").trim().toLowerCase();
+    if (isConfigMode(modeInfo.mode) && isEntryCommand(text)) {
+      this.service._local(conn, `\r\n\x1b[90m[plan skip] ${command.text} — 当前已在${modeInfo.label}，跳过重复的视图切换\x1b[0m\r\n`);
+      return {
+        command: command.text,
+        explanation: command.explanation,
+        status: "ok",
+        output: `skipped: already in ${modeInfo.label}`,
+        durationMs: 0,
+        skipped: true
+      };
+    }
+    if (modeInfo.mode === "user" && isExitCommand(text)) {
+      this.service._local(conn, `\r\n\x1b[90m[plan skip] ${command.text} — 当前已在${modeInfo.label}，跳过\x1b[0m\r\n`);
+      return {
+        command: command.text,
+        explanation: command.explanation,
+        status: "ok",
+        output: `skipped: already in ${modeInfo.label}`,
+        durationMs: 0,
+        skipped: true
+      };
+    }
     const runner = command.reply
       ? runInteractive(this.service, conn, command.text, {
           vendor,
