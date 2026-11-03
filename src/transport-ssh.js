@@ -14,11 +14,17 @@ import { Client } from "ssh2";
 import { openSftp } from "./sftp-ops.js";
 
 /**
- * Legacy KEX for older Huawei VRP / IOS / Comware builds that offer only
- * SHA-1 group14. Appended after every modern algorithm: a modern peer still
- * negotiates modern, and only a peer that speaks nothing else lands here.
+ * Legacy algorithms for older Huawei VRP / IOS / Comware builds. They are
+ * appended after every modern algorithm, so a modern peer still negotiates
+ * modern and only a peer that speaks nothing else lands here. Comware 7 on
+ * HCL, for example, offers aes128-cbc but no CTR/GCM cipher.
  */
-const LEGACY_KEX = Object.freeze({ kex: { append: ["diffie-hellman-group14-sha1"] } });
+const LEGACY_ALGORITHMS = Object.freeze({
+  kex: { append: ["diffie-hellman-group14-sha1", "diffie-hellman-group1-sha1", "diffie-hellman-group-exchange-sha1"] },
+  cipher: { append: ["aes128-cbc", "aes256-cbc", "3des-cbc"] },
+  hmac: { append: ["hmac-sha1", "hmac-sha1-96"] },
+  serverHostKey: { append: ["ssh-rsa", "ssh-dss"] }
+});
 
 export const SSH_DEFAULTS = Object.freeze({
   readyTimeoutMs: 20000,
@@ -27,7 +33,7 @@ export const SSH_DEFAULTS = Object.freeze({
 });
 
 function isKexMismatch(error) {
-  return /no matching key exchange|no matching kex|key exchange algorithm/i.test(String(error?.message ?? error ?? ""));
+  return /no matching (key exchange|kex|cipher|mac|hmac|server host key|host key)/i.test(String(error?.message ?? error ?? ""));
 }
 
 export class SshTransport {
@@ -87,7 +93,7 @@ export class SshTransport {
       // explicit address, so verification is deliberately off. This matches
       // dsh-ssh-ops' default hostKeyMode=off.
       hostVerifier: () => true,
-      ...(legacy ? { algorithms: LEGACY_KEX } : {})
+      algorithms: LEGACY_ALGORITHMS
     };
     if (this.password) config.password = this.password;
     if (this.privateKey) {

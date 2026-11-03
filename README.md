@@ -23,11 +23,46 @@
 - **自动会话日志**：连接建立即开始记录，文件名形如
   `SW-Core_10.1.1.1_20261027-231530.log`
   （`<hostname>_<ip>_<YYYYMMDD-HHmmss>.log`）。设备提示符中识别到真实 hostname 后会自动重命名日志；未填写设备名时先用 `device` 占位（如 `device_10.1.1.1_...log`），识别后再重命名。同目录下有同名 `.json` 元数据。
-- **AI 工具**：`device_connect` / `device_list` / `device_send` / `device_read` / `device_close` / `device_sftp` / `device_logs`。`device_send` 会在右侧终端留下 `[agent ...]` 标记并写入日志的 `INPUT (agent)` 记录。
+- **AI 工具**：`device_connect` / `device_list` / `device_send` / `device_read` / `device_close` / `device_sftp` / `device_logs`，以及 0.2.0 的 `kb_search` / `kb_docs` / `device_profile` / `plan_*`。`device_send` 会在右侧终端留下 `[agent ...]` 标记并写入日志的 `INPUT (agent)` 记录。
 - **左侧会话栏**：像 MobaXterm / SecureCRT 一样保存连接过的设备。双击有锁标记（已保存密码）的会话直接重连；没有密码的会话会预填地址，只补密码即可。密码写入 DSH 凭据库，`autoconfig-profiles.json` 只保存地址、用户名和端口。
 - **关键字高亮**：内置 `colorful-network.ini` 的 22 条规则（`no/down/error` 红、`up/connected` 绿、协议/端口蓝、路由/ACL 品红、接口/IP/百分比橙），大小写不敏感，按最长匹配避免重叠，且只在整词边界命中（不会把 `Usage` 里的 `ge`、`Canonical` 里的 `no` 染色）。工具栏「高亮」可随时关闭；已带 ANSI 颜色的设备输出原样保留。
 - **终端外观**：终端页面默认**纯黑背景**；工具栏可一键切黑/深蓝黑/浅色，或用取色器选任意颜色。背景与高亮开关保存在浏览器 `localStorage`（`dsh-autoconfig.terminal-background` / `dsh-autoconfig.keyword-highlight`）。
 - **日志查看**：面板「日志」按钮可预览、下载、删除日志；日志目录默认 `~/.dsh/autoconfig-logs`。
+- **手册知识库（0.2.0）**：右侧「知识库」抽屉上传 PDF / CHM / MD 技术手册，填写厂家/系列/型号/适用版本；后台建立 TGM（章节树 + 实体图 + 映射）+ BM25 + 本地向量（bge-m3）混合索引，可选 bge-reranker 重排。
+- **配置计划与审批（0.2.0）**：AI 先 `device_profile` 采集厂商/型号/版本/序列号并与手册核验，再 `kb_search` 取手册依据；`plan_create` 生成的计划包含每条命令的中文解释、验证命令和回滚命令。**整份计划需操作者在「计划」抽屉批准**，批准与命令哈希绑定，改一个字即失效；批准后按步骤写入右侧终端，执行中失败立即暂停。
+- **错误识别与 `?` 自愈（0.2.0）**：识别 Comware / VRP / IOS 的 `^` 错误位置与 `% ... found at '^' position` 提示，用 `?` 逐词探测（不回车、不执行），修正后计划回到 draft 由操作者重新批准；失败样本写入本地案例库并注入后续计划。
+
+## 手册知识库与配置计划（0.2.0）
+
+这一版把 BookRAG 的检索能力内置为本地 sidecar（Python），插件只通过 `127.0.0.1` 的随机端口和一次性 token 访问它；浏览器不直连 sidecar。
+
+- **数据目录**：默认 `~/.dsh/autoconfig-kb`，可用 `~/.dsh/autoconfig-rag.json` 覆盖：
+
+```json
+{
+  "dataDir": "E:\\dsh-autoconfig-data",
+  "python": "E:\\dsh-autoconfig-data\\.venv\\Scripts\\python.exe",
+  "modelPath": "E:\\dsh-autoconfig-data\\models\\bge-m3",
+  "device": "cuda",
+  "autoStart": true
+}
+```
+
+- **Python 环境**（首次使用，手动准备一次）：
+
+```powershell
+E:\Python312\python.exe -m venv E:\dsh-autoconfig-data\.venv
+E:\dsh-autoconfig-data\.venv\Scripts\python.exe -m pip install -r sidecar\requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+E:\dsh-autoconfig-data\.venv\Scripts\python.exe -m pip install torch==2.5.1+cu121 --index-url https://download.pytorch.org/whl/cu121
+E:\dsh-autoconfig-data\.venv\Scripts\modelscope.exe download --model BAAI/bge-m3 --local_dir E:\dsh-autoconfig-data\models\bge-m3
+# 可选重排模型：
+E:\dsh-autoconfig-data\.venv\Scripts\modelscope.exe download --model BAAI/bge-reranker-v2-m3 --local_dir E:\dsh-autoconfig-data\models\bge-reranker-v2-m3
+```
+
+- **无 GPU**：把 `device` 改成 `"cpu"` 即可；没有向量模型时仍可用 BM25 + TGM 词法检索。
+- **文档元数据**：上传表单记录厂家、系列、型号、适用版本；检索先按厂家硬过滤，再按型号/版本匹配排序，避免把华为的命令发给 H3C 设备。
+- **新增工具**：`kb_search` / `kb_docs` / `device_profile` / `plan_create` / `plan_execute` / `plan_status` / `plan_diagnose` / `plan_revise` / `plan_abort`。
+- **行为约束**：`plan_execute` 在 host 侧校验批准哈希，AI 无法自己批准；`?` 探测只输入、不回车；`save` / `reboot` / `undo` 管理面等高风险命令在计划里单列风险，执行前由操作者一次性确认整份计划。
 
 ## 安装
 
@@ -39,6 +74,8 @@
 dsh plugin --profile desktop add dsh-autoconfig
 # 或 dsh plugin --profile web add dsh-autoconfig
 ```
+
+> **0.2.0 升级提示**：新增了 `kb_*` / `device_profile` / `plan_*` 工具和本地 sidecar。安装后请**完全退出并重启 DSH Desktop**（含托盘），再刷新页面；仅热重载不会刷新工具清单和宿主路由。
 
 ### 方式二：GitHub 源码
 
@@ -58,13 +95,13 @@ pnpm install
 pnpm pack
 
 # 安装到 desktop profile（DSH Desktop 使用的 profile 名）
-dsh plugin --profile desktop add .\dsh-autoconfig-0.1.3.tgz
+dsh plugin --profile desktop add .\dsh-autoconfig-0.2.0.tgz
 ```
 
 若 `dsh` 不在 PATH，请使用 DSH 安装目录中的 `dsh`/`dsh.cmd`，或通过官方 npm 包执行：
 
 ```powershell
-npx @deepseek-ai/dsh plugin --profile desktop add .\dsh-autoconfig-0.1.3.tgz
+npx @deepseek-ai/dsh plugin --profile desktop add .\dsh-autoconfig-0.2.0.tgz
 ```
 
 `dsh plugin add` 会把包加入 profile 依赖，并自动把声明了 `dsh.bundle` 的包加入 `dsh.profile.bundles`。当前 DSH 桌面版是 live profile，通常会热加载；若没有出现标签页，完全退出并重启 DSH Desktop。

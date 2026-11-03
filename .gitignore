@@ -3,3 +3,6 @@ node_modules/
 *.log
 test-tmp-*/
 .pnpm-store/
+
+__pycache__/
+*.pyc

@@ -9,6 +9,7 @@ import {
 import { SftpBrowser } from "./SftpBrowser.jsx";
 import { ConnectDialog } from "./ConnectDialog.jsx";
 import { LogsDialog } from "./LogsDialog.jsx";
+import { RagPanel } from "./RagPanel.jsx";
 import { SessionBar } from "./SessionBar.jsx";
 import { getTerminalTheme } from "./terminal-theme.js";
 import { applyTheme } from "./styles.js";
@@ -40,6 +41,7 @@ export function AutoconfigPanel({ api }) {
   const [profiles, setProfiles] = useState([]);
   const [sessionsOpen, setSessionsOpen] = useState(true);
   const [logsOpen, setLogsOpen] = useState(false);
+  const [ragTab, setRagTab] = useState(null);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   const [termBackground, setTermBackground] = useState(() => getTerminalBackground());
@@ -269,6 +271,8 @@ export function AutoconfigPanel({ api }) {
                 onClick={toggleHighlight}
                 title="按 colorful-network 规则高亮终端关键字"
               >高亮</button>
+              <button type="button" className="ac-btn" data-active={ragTab === "docs"} onClick={() => setRagTab("docs")} title="手册知识库：上传、建索引">知识库</button>
+              <button type="button" className="ac-btn" data-active={ragTab === "plans"} onClick={() => setRagTab("plans")} title="配置计划：审批与执行">计划</button>
               <button type="button" className="ac-btn" onClick={() => setLogsOpen(true)}>日志</button>
               <button type="button" className="ac-btn" data-variant="danger" onClick={() => void close(active)} disabled={active.status !== "open"}>断开</button>
             </div>
@@ -326,6 +330,13 @@ export function AutoconfigPanel({ api }) {
         />
       )}
       {logsOpen && <LogsDialog api={api} onClose={() => setLogsOpen(false)} />}
+      {ragTab && (
+        <RagPanel
+          tab={ragTab}
+          connectionId={active?.connectionId ?? null}
+          onClose={() => setRagTab(null)}
+        />
+      )}
     </div>
   );
 }

@@ -40,6 +40,9 @@ import {
   writeFile
 } from "./sftp-ops.js";
 import { registerDeviceTools } from "./tools/devices.js";
+import { registerRagTools } from "./tools/rag.js";
+import { RagManager } from "./rag/manager.js";
+import { registerRagRoutes } from "./rag/routes.js";
 
 const MAX_JOURNAL_BYTES = 4 * 1024 * 1024;
 const MAX_READ_BYTES = 64 * 1024;
@@ -129,6 +132,19 @@ export default class AutoConfigService extends TypertRemoteService {
     }, "dsh-autoconfig: cleanup");
 
     registerDeviceTools(ctx, this);
+
+    // RAG knowledge base + reviewable configuration plans. The sidecar is
+    // started lazily on the first tool/panel request so an unused plugin costs
+    // nothing at startup.
+    this.rag = new RagManager(this, config.rag ?? {});
+    this.ragReady = this.rag.init();
+    registerRagTools(ctx, this.rag);
+    ctx.inject(["connection", "webServer"], (hostCtx) => {
+      registerRagRoutes(hostCtx, this.rag);
+    });
+    ctx.effect(() => () => {
+      void this.rag?.sidecar?.stop().catch(() => {});
+    }, "dsh-autoconfig: rag cleanup");
 
     // The session-bar RPC is served from a small same-origin JSON route instead
     // of a new Typert method: DSH caches a plugin's Typert manifest until the
@@ -996,7 +1012,26 @@ export default class AutoConfigService extends TypertRemoteService {
       }
     }
 
+    if (protocol !== "sftp") void this._scheduleProfileCollect(id);
     return this._info(conn);
+  }
+
+  /**
+   * Collect a device profile in the background after a successful connection.
+   * Read-only commands are visible in the terminal; the sidecar is not started
+   * until the agent or the panel actually needs the knowledge base.
+   */
+  async _scheduleProfileCollect(connectionId) {
+    try {
+      await this.rag.init();
+      if (this.rag.config?.autoCollect === false) return;
+      const timer = setTimeout(() => {
+        const conn = this.connections.get(connectionId);
+        if (!conn || conn.status !== "open") return;
+        void this.rag.collect(connectionId, null, { bind: false }).catch(() => {});
+      }, 1200);
+      timer.unref?.();
+    } catch {}
   }
 
   writeRaw(conn, buffer, { source = "panel", sensitive = false } = {}) {

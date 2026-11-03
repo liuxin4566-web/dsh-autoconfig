@@ -1,7 +1,7 @@
 {
   "name": "dsh-autoconfig",
-  "version": "0.1.3",
-  "description": "Network device auto-configuration terminal for DSH Web UI: connect to routers, switches and firewalls over SSH, Telnet, serial console or SFTP; every agent operation is visible in the right-side terminal and recorded to a per-device log named by hostname, timestamp and IP.",
+  "version": "0.2.0",
+  "description": "Network device auto-configuration terminal for DSH Web UI with a local vendor-manual RAG knowledge base: upload PDF/CHM/MD manuals, build a TGM + BM25 + dense index, verify vendor/model/version against the device, and execute operator-approved configuration plans step by step in the visible terminal, with caret-aware error repair.",
   "icon": "./icon.svg",
   "license": "MIT",
   "type": "module",
@@ -25,6 +25,9 @@
   "files": [
     "lib",
     "locale",
+    "sidecar/bookrag_svc",
+    "sidecar/requirements.txt",
+    "sidecar/README.md",
     "cordis.patch.yml",
     "README.md",
     "THIRD_PARTY_NOTICES.md",

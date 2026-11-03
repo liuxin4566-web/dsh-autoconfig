@@ -45,7 +45,7 @@ function makeService(logDir) {
     async resolve(ref) { return secrets.has(ref) ? { value: secrets.get(ref), source: "file" } : undefined; },
     async describe(ref) { return { configured: secrets.has(ref), writable: true }; }
   });
-  const service = new AutoConfigService(ctx, { logDir, profileFile: join(logDir, "profiles.json") });
+  const service = new AutoConfigService(ctx, { logDir, profileFile: join(logDir, "profiles.json"), rag: { autoCollect: false } });
   return { ctx, service, tools, secrets };
 }
 
@@ -67,7 +67,10 @@ test("host service connects, streams, logs, SFTPs, and closes", { timeout: 30000
   const { service, tools, secrets } = makeService(logDir);
   const child = await startSshServer(2301, sftpRoot);
   try {
-    assert.deepEqual(tools, ["device_connect", "device_list", "device_send", "device_read", "device_close", "device_sftp", "device_logs"]);
+    assert.deepEqual(tools, [
+      "device_connect", "device_list", "device_send", "device_read", "device_close", "device_sftp", "device_logs",
+      "kb_search", "kb_docs", "device_profile", "plan_create", "plan_execute", "plan_status", "plan_diagnose", "plan_revise", "plan_abort"
+    ]);
 
     const connected = await service.connect({
       protocol: "ssh",

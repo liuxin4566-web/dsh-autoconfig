@@ -198,6 +198,8 @@ export function registerDeviceTools(ctx, service) {
         properties: {
           connectionId: { type: "string", required: true },
           data: { type: "string", required: true },
+          startOffset: nullableInteger,
+          nextOffset: nullableInteger,
           truncated: { type: "boolean", required: true },
           closed: { type: "boolean", required: true }
         }
@@ -208,7 +210,15 @@ export function registerDeviceTools(ctx, service) {
       }
     },
     async execute(args) {
-      return service.readAgentOutput(args.connection_id, args.mode ?? "new");
+      const value = service.readAgentOutput(args.connection_id, args.mode ?? "new");
+      // Keep the payload inside the declared schema even when an older cached
+      // tool manifest is still active after a hot reload.
+      return {
+        connectionId: value.connectionId,
+        data: value.data,
+        truncated: value.truncated,
+        closed: value.closed
+      };
     }
   }));
 
