@@ -69,7 +69,7 @@ test("host service connects, streams, logs, SFTPs, and closes", { timeout: 30000
   try {
     assert.deepEqual(tools, [
       "device_connect", "device_list", "device_send", "device_read", "device_close", "device_sftp", "device_logs",
-      "kb_search", "kb_docs", "device_profile", "plan_create", "plan_execute", "plan_status", "plan_diagnose", "plan_revise", "plan_abort"
+      "kb_search", "kb_docs", "device_profile", "plan_create", "plan_approve", "plan_execute", "plan_status", "plan_diagnose", "plan_revise", "plan_abort"
     ]);
 
     const connected = await service.connect({

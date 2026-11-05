@@ -6,4 +6,4 @@ from .embedder import Embedder
 from .search import Registry
 
 __all__ = ["create_app", "Settings", "Embedder", "Registry"]
-__version__ = "0.2.1"
+__version__ = "0.2.2"

@@ -379,6 +379,7 @@ function PlansTab({ plans, refresh, setError }) {
               依据：{plan.docRefs.map((ref) => `${ref.title ?? ref.docId} ${ref.section ?? ""}`).join("；")}
             </div>
           )}
+          <div className="ac-rag-muted">也可直接在对话中批准：AI 展示完整计划后，会调用 plan_approve 记录你的同意。</div>
           <div className="ac-rag-row" style={{ marginTop: 8 }}>
             <button className="ac-rag-btn" data-variant="primary" disabled={busy || plan.approval?.status === "approved"} onClick={() => void approve()}>批准整份计划</button>
             <button className="ac-rag-btn" data-variant="primary" disabled={busy || plan.approval?.status !== "approved"} onClick={() => void execute()}>{busy ? "执行中…" : "执行"}</button>

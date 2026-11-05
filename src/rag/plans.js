@@ -267,12 +267,12 @@ export class PlanEngine {
     return this.save(plan);
   }
 
-  async approve(planId) {
+  async approve(planId, { by = "panel" } = {}) {
     const plan = await this.load(planId);
     if (!plan) throw new Error(`计划 ${planId} 不存在`);
     if (plan.status === "running") throw new Error("计划正在执行，不能重复批准");
     const hash = canonicalHash(plan);
-    plan.approval = { status: "approved", hash, at: new Date().toISOString(), by: "panel" };
+    plan.approval = { status: "approved", hash, at: new Date().toISOString(), by };
     plan.status = "approved";
     plan.planHash = hash;
     await this.save(plan);
@@ -345,7 +345,7 @@ export class PlanEngine {
     }
     const hash = canonicalHash(plan);
     if (plan.approval?.status !== "approved" || plan.approval.hash !== hash) {
-      const error = new Error("计划未批准，或批准后内容已变更；请由操作者在右侧面板确认后再执行。");
+      const error = new Error("计划未批准，或批准后内容已变更；请先在对话中向用户展示计划并取得明确同意，再调用 plan_approve。");
       error.code = "not-approved";
       throw error;
     }

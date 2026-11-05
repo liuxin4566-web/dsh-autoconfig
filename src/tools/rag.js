@@ -173,7 +173,8 @@ export function registerRagTools(ctx, manager) {
       "The tool detects the current CLI view from the terminal prompt and adapts the plan: removes a redundant system-view when already in system view, " +
       "prepends system-view when the device is in user view, and warns when the session is in a sub-view. " +
       "Every command needs a Chinese explanation; config-changing steps need verify commands and rollback where possible. " +
-      "The plan is NOT executed here: the operator must approve the whole plan in the right-side 「计划」 drawer, then call plan_execute. " +
+      "The plan is NOT executed here. Show the complete plan (commands, explanations, verify and rollback) to the user in the conversation. " +
+      "After the user explicitly approves it in the chat, call plan_approve and then plan_execute. The right-side 「计划」 drawer remains optional. " +
       "Never send configuration through device_send directly.",
     parameters: {
       plan: {
@@ -231,7 +232,10 @@ export function registerRagTools(ctx, manager) {
         const adjustmentLines = value.adjustments?.length
           ? `\n视图适配：\n${value.adjustments.map((item) => `- ${item}`).join("\n")}`
           : "";
-        return [{ type: "text", text: `${modeLine}${adjustmentLines}\n\n${planText(value)}\n\n状态：${value.approval}。请在右侧「计划」抽屉批准后调用 plan_execute。` }];
+        const warningLines = value.warnings?.length
+          ? `\n注意：\n${value.warnings.map((item) => `- ${item}`).join("\n")}`
+          : "";
+        return [{ type: "text", text: `${modeLine}${adjustmentLines}\n\n${planText(value)}${warningLines}\n\n状态：${value.approval}。请把以上计划完整展示给用户，取得用户明确同意后调用 plan_approve；也可在右侧「计划」抽屉手动批准。` }];
       }
     },
     async execute(args) {
@@ -265,10 +269,38 @@ export function registerRagTools(ctx, manager) {
   }));
 
   ctx.tools.register(defineTool({
+    name: "plan_approve",
+    description:
+      "Record the user's explicit approval of a plan in the conversation. " +
+      "Call this ONLY after you have shown the full plan (commands + explanations + verify + rollback) and the user clearly approved it in chat, e.g. 同意/批准/可以/执行. " +
+      "This replaces the right-side drawer approval. If the plan is revised after approval, ask the user again and call this again. " +
+      "After this returns approved, call plan_execute.",
+    parameters: {
+      plan_id: { type: "string", required: true, description: "Plan id returned by plan_create." }
+    },
+    output: {
+      schema: { type: "object", additionalProperties: true },
+      render(_args, value) {
+        return [{ type: "text", text: `计划 ${value.planId} 已在对话中批准（by=${value.by}，hash ${String(value.hash ?? "").slice(0, 12)}）。可以调用 plan_execute。` }];
+      }
+    },
+    async execute(args) {
+      const plan = await manager.approvePlan(args.plan_id, { by: "conversation" });
+      return {
+        planId: String(plan.planId),
+        status: String(plan.status ?? "approved"),
+        approval: String(plan.approval?.status ?? "approved"),
+        by: String(plan.approval?.by ?? "conversation"),
+        hash: String(plan.planHash ?? "")
+      };
+    }
+  }));
+
+  ctx.tools.register(defineTool({
     name: "plan_execute",
     description:
       "Execute an approved plan step by step in the right-side terminal. " +
-      "The host rejects this call unless the operator approved the exact current plan hash in the panel. " +
+      "The host rejects this call unless the user approved the exact current plan hash, either via plan_approve (conversation) or the right-side drawer. " +
       "On failure the plan pauses and returns the failed step, the raw output and the caret token; call plan_diagnose next.",
     parameters: {
       plan_id: { type: "string", required: true },

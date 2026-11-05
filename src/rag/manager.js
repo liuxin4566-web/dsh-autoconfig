@@ -211,9 +211,9 @@ export class RagManager {
     return this.plans.create(input);
   }
 
-  async approvePlan(planId) {
+  async approvePlan(planId, options = {}) {
     await this.init();
-    return this.plans.approve(planId);
+    return this.plans.approve(planId, options);
   }
 
   async executePlan(planId, options = {}) {

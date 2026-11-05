@@ -29,7 +29,7 @@
 - **终端外观**：终端页面默认**纯黑背景**；工具栏可一键切黑/深蓝黑/浅色，或用取色器选任意颜色。背景与高亮开关保存在浏览器 `localStorage`（`dsh-autoconfig.terminal-background` / `dsh-autoconfig.keyword-highlight`）。
 - **日志查看**：面板「日志」按钮可预览、下载、删除日志；日志目录默认 `~/.dsh/autoconfig-logs`。
 - **手册知识库（0.2.0）**：右侧「知识库」抽屉上传 PDF / CHM / MD 技术手册，填写厂家/系列/型号/适用版本；后台建立 TGM（章节树 + 实体图 + 映射）+ BM25 + 本地向量（bge-m3）混合索引，可选 bge-reranker 重排。
-- **配置计划与审批（0.2.0）**：AI 先 `device_profile` 采集厂商/型号/版本/序列号并与手册核验，再 `kb_search` 取手册依据；`plan_create` 生成的计划包含每条命令的中文解释、验证命令和回滚命令。**整份计划需操作者在「计划」抽屉批准**，批准与命令哈希绑定，改一个字即失效；批准后按步骤写入右侧终端，执行中失败立即暂停。
+- **配置计划与审批（0.2.0 / 0.2.2）**：AI 先 `device_profile` 采集厂商/型号/版本/序列号并与手册核验，再 `kb_search` 取手册依据；`plan_create` 生成的计划包含每条命令的中文解释、验证命令和回滚命令，并**完整展示在对话中**。操作者直接在对话里确认后，AI 调用 `plan_approve` 记录“对话批准”，再 `plan_execute` 分步写入终端；右侧「计划」抽屉仍保留手动批准入口。批准与命令哈希绑定，改一个字即失效，执行中失败立即暂停。
 - **错误识别与 `?` 自愈（0.2.0）**：识别 Comware / VRP / IOS 的 `^` 错误位置与 `% ... found at '^' position` 提示，用 `?` 逐词探测（不回车、不执行），修正后计划回到 draft 由操作者重新批准；失败样本写入本地案例库并注入后续计划。
 - **视图自适应（0.2.1）**：`plan_create` 读取终端当前提示符（`<H3C>` 用户视图 / `[H3C]` 系统视图 / `[H3C-xxx]` 子视图），已在系统视图时自动移除重复的 `system-view`，在用户视图时自动补充 `system-view`，子视图会给出警告；执行时再次检测，重复的视图切换命令直接跳过并留下 `[plan skip]` 标记。
 
@@ -62,8 +62,8 @@ E:\dsh-autoconfig-data\.venv\Scripts\modelscope.exe download --model BAAI/bge-re
 
 - **无 GPU**：把 `device` 改成 `"cpu"` 即可；没有向量模型时仍可用 BM25 + TGM 词法检索。
 - **文档元数据**：上传表单记录厂家、系列、型号、适用版本；检索先按厂家硬过滤，再按型号/版本匹配排序，避免把华为的命令发给 H3C 设备。
-- **新增工具**：`kb_search` / `kb_docs` / `device_profile` / `plan_create` / `plan_execute` / `plan_status` / `plan_diagnose` / `plan_revise` / `plan_abort`。
-- **行为约束**：`plan_execute` 在 host 侧校验批准哈希，AI 无法自己批准；`?` 探测只输入、不回车；`save` / `reboot` / `undo` 管理面等高风险命令在计划里单列风险，执行前由操作者一次性确认整份计划。
+- **新增工具**：`kb_search` / `kb_docs` / `device_profile` / `plan_create` / `plan_approve` / `plan_execute` / `plan_status` / `plan_diagnose` / `plan_revise` / `plan_abort`。
+- **行为约束**：`plan_execute` 在 host 侧校验批准哈希；AI 必须先把完整计划展示在对话中，取得用户明确同意后才能调用 `plan_approve`，不能跳过对话直接批准。`?` 探测只输入、不回车；`save` / `reboot` / `undo` 管理面等高风险命令在计划里单列风险，执行前由操作者对整份计划一次确认。
 
 ## 安装
 
@@ -79,6 +79,8 @@ dsh plugin --profile desktop add dsh-autoconfig
 > **0.2.0 升级提示**：新增了 `kb_*` / `device_profile` / `plan_*` 工具和本地 sidecar。安装后请**完全退出并重启 DSH Desktop**（含托盘），再刷新页面；仅热重载不会刷新工具清单和宿主路由。
 >
 > **0.2.1 升级提示**：`plan_create` 新增终端视图检测与自适应；安装后同样需要完全退出并重启 DSH Desktop，新的 `[plan skip]` 与视图调整逻辑才会生效。
+>
+> **0.2.2 升级提示**：新增 `plan_approve`，支持在对话中完成整份计划的批准，右侧抽屉不再是必经步骤；升级后需完全重启 DSH Desktop 才会加载新工具。
 
 ### 方式二：GitHub 源码
 
