@@ -129,13 +129,16 @@ export function highlightLine(line, background = "#000000") {
   if (line.includes("\x1b")) return line;
   let suffix = "";
   let body = line;
-  if (body.endsWith("\r\n")) {
-    suffix = "\r\n";
-    body = body.slice(0, -2);
-  } else if (body.endsWith("\n")) {
-    suffix = "\n";
-    body = body.slice(0, -1);
+  // H3C/Huawei devices often terminate lines with "\r\r\n". Strip the whole
+  // ending (and any stray trailing CR) before checking for embedded CRs;
+  // otherwise every device line looks like a carriage-return progress line
+  // and is passed through unhighlighted.
+  const ending = /\r*\n$/.exec(body);
+  if (ending !== null) {
+    suffix = ending[0];
+    body = body.slice(0, -suffix.length);
   }
+  while (body.endsWith("\r")) body = body.slice(0, -1);
   // Carriage-return progress lines overwrite themselves; decorating them would
   // leave partial escape sequences in the overwritten cells.
   if (body.includes("\r") || body.length > MAX_LINE) return line;

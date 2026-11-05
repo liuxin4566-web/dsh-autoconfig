@@ -65,6 +65,13 @@ test("ANSI-colored lines pass through untouched", () => {
   assert.equal(highlightLine(line, BG), line);
 });
 
+test("device lines ending in double CR are still highlighted", () => {
+  const line = "GE1/0/1              UP   1G(a)   F(a)   A    1    \r\r\n";
+  const output = highlightLine(line, BG);
+  assert.ok(output.includes("\x1b[38;2;0;255;0mUP"));
+  assert.ok(output.endsWith("\r\r\n"));
+});
+
 test("light backgrounds get darkened highlight colors", () => {
   const dark = highlightLine("down", "#000000");
   const light = highlightLine("down", "#ffffff");
