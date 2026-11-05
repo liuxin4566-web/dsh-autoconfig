@@ -1,6 +1,6 @@
 {
   "name": "dsh-autoconfig",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Network device auto-configuration terminal for DSH Web UI with a local vendor-manual RAG knowledge base: upload PDF/CHM/MD manuals, build a TGM + BM25 + dense index, verify vendor/model/version against the device, and execute operator-approved configuration plans step by step in the visible terminal, with caret-aware error repair.",
   "icon": "./icon.svg",
   "license": "MIT",

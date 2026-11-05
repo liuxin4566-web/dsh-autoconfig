@@ -81,6 +81,8 @@ dsh plugin --profile desktop add dsh-autoconfig
 > **0.2.1 升级提示**：`plan_create` 新增终端视图检测与自适应；安装后同样需要完全退出并重启 DSH Desktop，新的 `[plan skip]` 与视图调整逻辑才会生效。
 >
 > **0.2.2 升级提示**：新增 `plan_approve`，支持在对话中完成整份计划的批准，右侧抽屉不再是必经步骤；升级后需完全重启 DSH Desktop 才会加载新工具。
+>
+> **0.2.3 升级提示**：修复终端关键词高亮在分片数据下几乎不生效的问题——高亮器会缓存跨 chunk 的不完整行，40ms 后自动 flush 提示符；升级后需刷新页面（客户端 bundle）才能看到效果。
 
 ### 方式二：GitHub 源码
 

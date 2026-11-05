@@ -182,22 +182,55 @@ export function highlightLine(line, background = "#000000") {
  * tail is returned as-is so prompts and progress output appear immediately.
  */
 export function createTerminalHighlighter(getOptions) {
+  // SSH chunks split lines arbitrarily. Highlighting only lines wholly inside
+  // one chunk misses almost everything, so keep the incomplete tail here and
+  // let the caller flush it after a short delay (prompts stay responsive).
+  let carry = "";
+  const optionsOf = () => (typeof getOptions === "function" ? getOptions() : undefined);
+  const decorate = (text, background) => {
+    let output = "";
+    let start = 0;
+    for (let index = 0; index < text.length; index += 1) {
+      if (text.charCodeAt(index) !== 10) continue;
+      output += highlightLine(text.slice(start, index + 1), background);
+      start = index + 1;
+    }
+    return output;
+  };
   return {
     transform(chunk) {
       if (typeof chunk !== "string" || chunk === "") return chunk;
-      const options = typeof getOptions === "function" ? getOptions() : undefined;
-      if (options?.enabled === false) return chunk;
-      if (chunk.length > 512 * 1024) return chunk;
-      const background = options?.background ?? "#000000";
-      let output = "";
-      let start = 0;
-      for (let index = 0; index < chunk.length; index += 1) {
-        if (chunk.charCodeAt(index) !== 10) continue;
-        output += highlightLine(chunk.slice(start, index + 1), background);
-        start = index + 1;
+      const options = optionsOf();
+      if (options?.enabled === false) {
+        const pending = carry;
+        carry = "";
+        return pending + chunk;
       }
-      output += chunk.slice(start);
-      return output;
+      if (chunk.length > 512 * 1024) {
+        const pending = carry;
+        carry = "";
+        return pending + chunk;
+      }
+      const text = carry + chunk;
+      const lastNewline = text.lastIndexOf("\n");
+      if (lastNewline < 0) {
+        // Keep only a bounded tail; pathological output must not grow memory.
+        if (text.length > 64 * 1024) {
+          carry = "";
+          return text;
+        }
+        carry = text;
+        return "";
+      }
+      carry = text.slice(lastNewline + 1);
+      return decorate(text.slice(0, lastNewline + 1), options?.background ?? "#000000");
+    },
+    /** Emit the incomplete tail (called by a short timer or on teardown). */
+    flush() {
+      const pending = carry;
+      carry = "";
+      if (pending === "") return "";
+      return pending;
     }
   };
 }

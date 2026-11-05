@@ -89,7 +89,20 @@ export function XtermView({
     let alive = true;
     let writing = false;
     let pending = "";
+    let highlightTimer = null;
     const MAX_PENDING = 64 * 1024;
+
+    const writeHighlighted = (fresh) => {
+      const output = highlighterRef.current.transform(fresh);
+      if (output) term.write(output);
+      if (highlightTimer !== null) clearTimeout(highlightTimer);
+      highlightTimer = setTimeout(() => {
+        highlightTimer = null;
+        if (!alive) return;
+        const tail = highlighterRef.current.flush?.();
+        if (tail) term.write(tail);
+      }, 40);
+    };
 
     const flushInput = () => {
       if (!alive || writing || pending.length === 0) return;
@@ -117,7 +130,7 @@ export function XtermView({
 
     const showItem = ({ data, exit, startOffset, offset }) => {
       const fresh = entry.consume(data ?? "", startOffset, offset);
-      if (fresh) term.write(highlighterRef.current.transform(fresh));
+      if (fresh) writeHighlighted(fresh);
       if (exit !== null && exit !== undefined) {
         markClosed();
         term.write(EXIT_NOTICE);
@@ -203,6 +216,12 @@ export function XtermView({
       cancelAnimationFrame(raf);
       observer.disconnect();
       pending = "";
+      if (highlightTimer !== null) {
+        clearTimeout(highlightTimer);
+        highlightTimer = null;
+      }
+      const tail = highlighterRef.current.flush?.();
+      if (tail) term.write(tail);
       inputSubscription?.dispose();
       entryRef.current = null;
       terminalPool.release(connectionId, owner);

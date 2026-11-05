@@ -7,6 +7,7 @@ import { matchDocument } from "../src/rag/manager.js";
 import { registerRagTools } from "../src/tools/rag.js";
 import { adjustPlanForMode, detectCliMode } from "../src/rag/mode.js";
 import { getVendor } from "../src/rag/vendors.js";
+import { createTerminalHighlighter } from "../src/client/highlight.js";
 
 test("plan validation rejects a command without explanation", () => {
   const { errors } = validatePlanInput({
@@ -104,6 +105,24 @@ test("read-only plans are not given a system-view entry", () => {
   const adjusted = adjustPlanForMode(plan, { mode: "user", label: "用户视图", prompt: "<H3C>" }, getVendor("h3c"));
   assert.equal(adjusted.plan.steps[0].commands[0].text, "display version");
   assert.equal(adjusted.adjustments.length, 0);
+});
+
+test("keyword highlighter buffers lines split across terminal chunks", () => {
+  const highlighter = createTerminalHighlighter(() => ({ enabled: true, background: "#000000" }));
+  assert.equal(highlighter.transform("Interface Gigabit"), "");
+  const output = highlighter.transform("Ethernet1/0/1 is UP\n");
+  assert.match(output, /\x1b\[38;2;/);
+  assert.match(output, /UP/);
+  assert.equal(highlighter.flush(), "");
+
+  highlighter.transform("prompt<H3C>");
+  assert.equal(highlighter.flush(), "prompt<H3C>");
+});
+
+test("keyword highlighter passes data through when disabled", () => {
+  const highlighter = createTerminalHighlighter(() => ({ enabled: false, background: "#000000" }));
+  assert.equal(highlighter.transform("Interface UP"), "Interface UP");
+  assert.equal(highlighter.flush(), "");
 });
 
 test("plan_create returns lossless JSON even when the plan has undefined fields", async () => {

@@ -74,11 +74,12 @@ test("light backgrounds get darkened highlight colors", () => {
   assert.equal(isLightBackground("#000000"), false);
 });
 
-test("chunk highlighter decorates complete lines but emits tails immediately", () => {
+test("chunk highlighter decorates complete lines and buffers the incomplete tail", () => {
   const highlighter = createTerminalHighlighter(() => ({ enabled: true, background: BG }));
   const output = highlighter.transform("down\nincomplete tail");
   assert.ok(output.includes("\x1b[38;2;255;0;0m"));
-  assert.ok(output.endsWith("incomplete tail"));
+  assert.equal(output.endsWith("incomplete tail"), false);
+  assert.equal(highlighter.flush(), "incomplete tail");
   assert.equal(highlighter.transform("down\n"), highlightLine("down\n", BG));
 });
 
