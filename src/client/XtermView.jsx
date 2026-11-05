@@ -238,6 +238,32 @@ export function XtermView({
     } catch {}
   }, [background]);
 
+  // Toggling highlight must recolor what is already on screen; xterm cannot
+  // repaint old cells, so replay the journal through the new setting.
+  const lastHighlightRef = useRef(highlight);
+  useEffect(() => {
+    if (lastHighlightRef.current === highlight) return undefined;
+    lastHighlightRef.current = highlight;
+    const entry = entryRef.current;
+    if (entry === null) return undefined;
+    const term = entry.term;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const history = await api.read(connectionId, 300, 0);
+        if (cancelled) return;
+        term.reset();
+        const output = highlighterRef.current.transform(history.data ?? "");
+        if (output) term.write(output);
+        const tail = highlighterRef.current.flush?.();
+        if (tail) term.write(tail);
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [highlight, api, connectionId]);
+
   return (
     <div className="ac-terminal-wrap" data-closed={closed || undefined} style={{ background }}>
       <div className="ac-xterm" ref={containerRef} />
