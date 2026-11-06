@@ -198,6 +198,8 @@ export function registerDeviceTools(ctx, service) {
         properties: {
           connectionId: { type: "string", required: true },
           data: { type: "string", required: true },
+          startOffset: { type: "number" },
+          nextOffset: { type: "number" },
           truncated: { type: "boolean", required: true },
           closed: { type: "boolean", required: true }
         }
