@@ -24,7 +24,7 @@ from .embedder import Embedder
 from .manifest import Manifest
 from .search import Registry
 
-VERSION = "0.2.5"
+VERSION = "0.2.6"
 
 
 class TaskManager:
@@ -156,6 +156,8 @@ def create_app(settings: Settings, embedder: Embedder, reranker, registry: Regis
     app = FastAPI(title="BookRAG sidecar", version=VERSION, docs_url=None, redoc_url=None, openapi_url=None)
     tasks = TaskManager()
     app.state.tasks = tasks
+    build_lock = threading.Lock()
+    build_tasks: dict[str, str] = {}
     app.state.registry = registry
     app.state.embedder = embedder
 
@@ -249,7 +251,14 @@ def create_app(settings: Settings, embedder: Embedder, reranker, registry: Regis
     def build_doc(doc_id: str, _: None = Depends(authorize)) -> dict:
         if registry.manifest.get(doc_id) is None:
             raise HTTPException(status_code=404, detail="document not found")
-        task_id = tasks.submit("build", f"构建 {doc_id}", lambda progress: registry.build(doc_id, progress))
+        with build_lock:
+            existing = build_tasks.get(doc_id)
+            if existing:
+                current = tasks.get(existing)
+                if current and current.get("status") in ("queued", "running"):
+                    return {"ok": True, "taskId": existing, "reused": True}
+            task_id = tasks.submit("build", f"构建 {doc_id}", lambda progress: registry.build(doc_id, progress))
+            build_tasks[doc_id] = task_id
         return {"ok": True, "taskId": task_id}
 
     @app.get("/tasks/{task_id}")

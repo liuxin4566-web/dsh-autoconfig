@@ -141,6 +141,7 @@ function UploadForm({ onUploaded, setError }) {
         <span className="ac-rag-muted">pdf / chm / md，文字可选型 PDF</span>
       </div>
       <input className="ac-rag-input" style={{ width: "100%", marginBottom: 6 }} type="file" accept=".pdf,.chm,.md,.markdown" onChange={choose} />
+      <div className="ac-rag-muted" style={{ marginBottom: 6 }}>支持 PDF / CHM / MD；CHM 会先用 hh.exe 解压，再建索引，首次构建通常需要 2–5 分钟。</div>
       <div className="ac-rag-row" style={{ marginBottom: 5 }}>
         <span className="ac-rag-label" style={{ width: 48 }}>标题</span>
         <input className="ac-rag-input" value={meta.title} onChange={(event) => setMeta({ ...meta, title: event.target.value })} placeholder="手册标题" />

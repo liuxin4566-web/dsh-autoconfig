@@ -2,6 +2,7 @@
 """Cross-document hybrid retrieval: dense + BM25 + TGM, fused with RRF."""
 from __future__ import annotations
 
+import json
 import threading
 import time
 from pathlib import Path
@@ -43,6 +44,7 @@ class Registry:
         with self._lock:
             self.indexes.clear()
             self._load_errors.clear()
+            self._reconcile_interrupted_builds()
             for record in self.manifest.list():
                 if record.get("status") != "ready":
                     continue
@@ -50,6 +52,38 @@ class Registry:
                     self.indexes[record["docId"]] = DocIndex.load(self.settings.docs_dir / record["docId"])
                 except Exception as error:  # keep serving the remaining docs
                     self._load_errors[record["docId"]] = str(error)
+
+    def _reconcile_interrupted_builds(self) -> None:
+        """A sidecar restart kills the in-process build. If the index files were
+        already written (meta.json exists), finish the bookkeeping; otherwise
+        mark the document failed so the UI can offer a rebuild instead of
+        showing "building" forever."""
+        for record in self.manifest.list():
+            if record.get("status") != "building":
+                continue
+            doc_id = record["docId"]
+            meta_path = self.settings.docs_dir / doc_id / "meta.json"
+            if not meta_path.exists():
+                self.manifest.update(doc_id, status="failed", error="构建被中断（sidecar 重启），请重新构建")
+                continue
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                self.manifest.update(doc_id, status="failed", error="索引元数据损坏，请重新构建")
+                continue
+            self.manifest.update(
+                doc_id,
+                status="ready",
+                stats={
+                    "nodes": meta.get("nodes"),
+                    "entities": meta.get("entities"),
+                    "edges": meta.get("edges"),
+                    "chunks": meta.get("nodes"),
+                    "embedder": meta.get("embedder"),
+                },
+                builtAt=meta.get("builtAt"),
+                error=None,
+            )
 
     def reload(self, doc_id: str) -> None:
         with self._lock:
