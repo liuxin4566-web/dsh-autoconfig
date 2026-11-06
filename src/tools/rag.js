@@ -274,6 +274,7 @@ export function registerRagTools(ctx, manager) {
       "Record the user's explicit approval of a plan in the conversation. " +
       "Call this ONLY after you have shown the full plan (commands + explanations + verify + rollback) and the user clearly approved it in chat, e.g. 同意/批准/可以/执行. " +
       "This replaces the right-side drawer approval. If the plan is revised after approval, ask the user again and call this again. " +
+      "If host config requirePanelApproval=true, this tool is rejected by design: ask the operator to approve in the right-side 「计划」 drawer instead. " +
       "After this returns approved, call plan_execute.",
     parameters: {
       plan_id: { type: "string", required: true, description: "Plan id returned by plan_create." }

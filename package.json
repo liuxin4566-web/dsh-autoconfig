@@ -1,6 +1,6 @@
 {
   "name": "dsh-autoconfig",
-  "version": "0.2.7",
+  "version": "1.0.0",
   "description": "Network device auto-configuration terminal for DSH Web UI with a local vendor-manual RAG knowledge base: upload PDF/CHM/MD manuals, build a TGM + BM25 + dense index, verify vendor/model/version against the device, and execute operator-approved configuration plans step by step in the visible terminal, with caret-aware error repair.",
   "icon": "./icon.svg",
   "license": "MIT",
@@ -30,6 +30,7 @@
     "sidecar/README.md",
     "cordis.patch.yml",
     "README.md",
+    "CHANGELOG.md",
     "THIRD_PARTY_NOTICES.md",
     "LICENSE",
     "icon.svg"
@@ -61,7 +62,11 @@
     "xterm",
     "network-automation",
     "device-management",
-    "ssh-client"
+    "ssh-client",
+    "dsh-plugin",
+    "rag",
+    "retrieval-augmented-generation",
+    "network-configuration"
   ],
   "dependencies": {
     "serialport": "^13.0.0"

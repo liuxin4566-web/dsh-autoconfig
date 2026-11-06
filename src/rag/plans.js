@@ -270,6 +270,11 @@ export class PlanEngine {
   async approve(planId, { by = "panel" } = {}) {
     const plan = await this.load(planId);
     if (!plan) throw new Error(`计划 ${planId} 不存在`);
+    if (this.service.rag?.config?.requirePanelApproval === true && by !== "panel") {
+      const error = new Error("当前配置要求由操作者在右侧「计划」抽屉点击批准；对话批准已禁用。");
+      error.code = "panel-approval-required";
+      throw error;
+    }
     if (plan.status === "running") throw new Error("计划正在执行，不能重复批准");
     const hash = canonicalHash(plan);
     plan.approval = { status: "approved", hash, at: new Date().toISOString(), by };

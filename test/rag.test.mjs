@@ -8,6 +8,11 @@ import { registerRagTools } from "../src/tools/rag.js";
 import { adjustPlanForMode, detectCliMode } from "../src/rag/mode.js";
 import { getVendor } from "../src/rag/vendors.js";
 import { createTerminalHighlighter } from "../src/client/highlight.js";
+import { RAG_DEFAULTS } from "../src/rag/config.js";
+
+test("panel-only approval is opt-in", () => {
+  assert.equal(RAG_DEFAULTS.requirePanelApproval, false);
+});
 
 test("plan validation rejects a command without explanation", () => {
   const { errors } = validatePlanInput({

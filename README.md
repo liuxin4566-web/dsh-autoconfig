@@ -10,6 +10,8 @@
 
 > **安全提示（重要）**：SSH 主机密钥校验默认关闭（`hostVerifier: () => true`），存在中间人攻击风险。请仅在可信管理网络使用；需要校验时，修改 `src/transport-ssh.js` 中的 `hostVerifier`，接入 `~/.ssh/known_hosts` 或设备指纹白名单。详见文末[安全说明](#安全说明)。
 >
+> **批准模型与写权限边界（重要）**：本插件的配置计划审批属于**流程性防护**，不构成强制访问控制。默认流程为：`plan_create` 展示计划 → 操作者在对话中明确同意 → Agent 调用 `plan_approve` 记录批准哈希 → `plan_execute` 校验后分步执行。由于 `plan_approve` 仍由 Agent 发起，在提示词注入、模型策略偏差或工具编排错误的情况下，存在 **Agent 未经操作者真实批准即写入配置** 的可能。若需将写权限收紧为更强的门禁，可在 `~/.dsh/autoconfig-rag.json` 中设置 `"requirePanelApproval": true`：此时宿主会拒绝 `plan_approve`，只有右侧「计划」抽屉中由操作者点击才能写入批准哈希。更严格的做法是移除或禁用 Agent 的 `plan_execute` 工具，由前端完成执行；最终仍应以设备侧 AAA / 命令授权作为安全边界。详见[安全说明](#安全说明)。
+>
 > **原生依赖**：串口功能依赖 `serialport` 原生绑定。pnpm/DSH 安装器通常会写入 `allowBuilds` 并重试，但若本机没有预编译包且缺少编译工具链，安装可能失败。Windows 需要 Visual Studio Build Tools 的“使用 C++ 的桌面开发”和 Python 3；Linux 需要 `build-essential` 与 `python3`。**不使用串口时，SSH/Telnet/SFTP 不受影响。**
 
 ## 功能
@@ -23,17 +25,17 @@
 - **自动会话日志**：连接建立即开始记录，文件名形如
   `SW-Core_10.1.1.1_20261027-231530.log`
   （`<hostname>_<ip>_<YYYYMMDD-HHmmss>.log`）。设备提示符中识别到真实 hostname 后会自动重命名日志；未填写设备名时先用 `device` 占位（如 `device_10.1.1.1_...log`），识别后再重命名。同目录下有同名 `.json` 元数据。
-- **AI 工具**：`device_connect` / `device_list` / `device_send` / `device_read` / `device_close` / `device_sftp` / `device_logs`，以及 0.2.0 的 `kb_search` / `kb_docs` / `device_profile` / `plan_*`。`device_send` 会在右侧终端留下 `[agent ...]` 标记并写入日志的 `INPUT (agent)` 记录。
+- **AI 工具**：`device_connect` / `device_list` / `device_send` / `device_read` / `device_close` / `device_sftp` / `device_logs`，以及 1.0.0 的 `kb_search` / `kb_docs` / `device_profile` / `plan_*`。`device_send` 会在右侧终端留下 `[agent ...]` 标记并写入日志的 `INPUT (agent)` 记录。
 - **左侧会话栏**：像 MobaXterm / SecureCRT 一样保存连接过的设备。双击有锁标记（已保存密码）的会话直接重连；没有密码的会话会预填地址，只补密码即可。密码写入 DSH 凭据库，`autoconfig-profiles.json` 只保存地址、用户名和端口。
 - **关键字高亮**：内置 `colorful-network.ini` 的 22 条规则（`no/down/error` 红、`up/connected` 绿、协议/端口蓝、路由/ACL 品红、接口/IP/百分比橙），大小写不敏感，按最长匹配避免重叠，且只在整词边界命中（不会把 `Usage` 里的 `ge`、`Canonical` 里的 `no` 染色）。工具栏「高亮」可随时关闭；已带 ANSI 颜色的设备输出原样保留。
 - **终端外观**：终端页面默认**纯黑背景**；工具栏可一键切黑/深蓝黑/浅色，或用取色器选任意颜色。背景与高亮开关保存在浏览器 `localStorage`（`dsh-autoconfig.terminal-background` / `dsh-autoconfig.keyword-highlight`）。
 - **日志查看**：面板「日志」按钮可预览、下载、删除日志；日志目录默认 `~/.dsh/autoconfig-logs`。
-- **手册知识库（0.2.0）**：右侧「知识库」抽屉上传 PDF / CHM / MD 技术手册，填写厂家/系列/型号/适用版本；后台建立 TGM（章节树 + 实体图 + 映射）+ BM25 + 本地向量（bge-m3）混合索引，可选 bge-reranker 重排。
-- **配置计划与审批（0.2.0 / 0.2.2）**：AI 先 `device_profile` 采集厂商/型号/版本/序列号并与手册核验，再 `kb_search` 取手册依据；`plan_create` 生成的计划包含每条命令的中文解释、验证命令和回滚命令，并**完整展示在对话中**。操作者直接在对话里确认后，AI 调用 `plan_approve` 记录“对话批准”，再 `plan_execute` 分步写入终端；右侧「计划」抽屉仍保留手动批准入口。批准与命令哈希绑定，改一个字即失效，执行中失败立即暂停。
+- **手册知识库（1.0.0）**：右侧「知识库」抽屉上传 PDF / CHM / MD 技术手册，填写厂家/系列/型号/适用版本；后台建立 TGM（章节树 + 实体图 + 映射）+ BM25 + 本地向量（bge-m3）混合索引，可选 bge-reranker 重排。
+- **配置计划与审批（1.0.0）**：AI 先 `device_profile` 采集厂商/型号/版本/序列号并与手册核验，再 `kb_search` 取手册依据；`plan_create` 生成的计划包含每条命令的中文解释、验证命令和回滚命令，并**完整展示在对话中**。默认由操作者在对话里确认后，AI 调用 `plan_approve` 记录“对话批准”，再 `plan_execute` 分步写入终端；右侧「计划」抽屉保留手动批准入口。设置 `requirePanelApproval: true` 后，对话批准被宿主拒绝，只有面板按钮能完成批准。批准与命令哈希绑定，改一个字即失效，执行中失败立即暂停。
 - **错误识别与 `?` 自愈（0.2.0）**：识别 Comware / VRP / IOS 的 `^` 错误位置与 `% ... found at '^' position` 提示，用 `?` 逐词探测（不回车、不执行），修正后计划回到 draft 由操作者重新批准；失败样本写入本地案例库并注入后续计划。
 - **视图自适应（0.2.1）**：`plan_create` 读取终端当前提示符（`<H3C>` 用户视图 / `[H3C]` 系统视图 / `[H3C-xxx]` 子视图），已在系统视图时自动移除重复的 `system-view`，在用户视图时自动补充 `system-view`，子视图会给出警告；执行时再次检测，重复的视图切换命令直接跳过并留下 `[plan skip]` 标记。
 
-## 手册知识库与配置计划（0.2.0）
+## 手册知识库与配置计划（1.0.0）
 
 这一版把 BookRAG 的检索能力内置为本地 sidecar（Python），插件只通过 `127.0.0.1` 的随机端口和一次性 token 访问它；浏览器不直连 sidecar。
 
@@ -67,40 +69,28 @@ E:\dsh-autoconfig-data\.venv\Scripts\modelscope.exe download --model BAAI/bge-re
 
 ## 安装
 
-### 方式一：npm（推荐）
-
-已发布到 npm：[dsh-autoconfig](https://www.npmjs.com/package/dsh-autoconfig)
+### 方式一：GitHub（推荐，1.0.0）
 
 ```powershell
-dsh plugin --profile desktop add dsh-autoconfig
-# 或 dsh plugin --profile web add dsh-autoconfig
+# desktop profile
+dsh plugin --profile desktop add github:liuxin4566-web/dsh-autoconfig#v1.0.0
+
+# web profile
+dsh plugin --profile web add github:liuxin4566-web/dsh-autoconfig#v1.0.0
 ```
 
-> **0.2.0 升级提示**：新增了 `kb_*` / `device_profile` / `plan_*` 工具和本地 sidecar。安装后请**完全退出并重启 DSH Desktop**（含托盘），再刷新页面；仅热重载不会刷新工具清单和宿主路由。
->
-> **0.2.1 升级提示**：`plan_create` 新增终端视图检测与自适应；安装后同样需要完全退出并重启 DSH Desktop，新的 `[plan skip]` 与视图调整逻辑才会生效。
->
-> **0.2.2 升级提示**：新增 `plan_approve`，支持在对话中完成整份计划的批准，右侧抽屉不再是必经步骤；升级后需完全重启 DSH Desktop 才会加载新工具。
->
-> **0.2.3 升级提示**：修复终端关键词高亮在分片数据下几乎不生效的问题——高亮器会缓存跨 chunk 的不完整行，40ms 后自动 flush 提示符；升级后需刷新页面（客户端 bundle）才能看到效果。
->
-> **0.2.4 升级提示**：切换「高亮」时会重放当前会话语义，历史输出立即重新着色，不再只影响新输出。
->
-> **0.2.5 升级提示**：修复 H3C/Huawei 输出行尾 `\r\r\n` 导致所有设备行被当作“回车进度行”跳过的问题；这是关键词高亮一直不显示的根因。
->
-> **0.2.6 升级提示**：CHM 上传/建索引完善：sidecar 重启后自动整理“building”状态（已落盘则恢复 ready，否则标记失败可重建），并阻止同一文档重复排队构建。
->
-> **0.2.7 升级提示**：修复预览按钮报 `Manifest.get() takes 2 positional arguments but 3 were given`。
+等价写法：`dsh plugin --profile desktop add git+https://github.com/liuxin4566-web/dsh-autoconfig.git#v1.0.0`。
 
-### 方式二：GitHub 源码
+### 方式二：npm
+
+npm 包名：[dsh-autoconfig](https://www.npmjs.com/package/dsh-autoconfig)。若 npm 上的最新版本仍低于 1.0.0，请使用上面的 GitHub 方式或本地 tgz。
 
 ```powershell
-dsh plugin --profile desktop add github:liuxin4566-web/dsh-autoconfig
-# Web profile：
-dsh plugin --profile web add github:liuxin4566-web/dsh-autoconfig
+dsh plugin --profile desktop add dsh-autoconfig@1.0.0
+# 或 dsh plugin --profile web add dsh-autoconfig@1.0.0
 ```
 
-等价写法：`dsh plugin --profile desktop add git+https://github.com/liuxin4566-web/dsh-autoconfig.git`。
+> **1.0.0 升级提示**：本版本合并了本地手册 RAG、设备档案核验、配置计划、视图自适应、对话批准、`requirePanelApproval` 严格模式、错误自愈与 CHM 构建加固。升级后请**完全退出并重启 DSH Desktop**（含托盘），再刷新页面；仅热重载不会刷新工具清单、宿主路由和客户端 bundle。完整变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 ### 方式三：本地 tgz
 
@@ -110,7 +100,7 @@ pnpm install
 pnpm pack
 
 # 安装到 desktop profile（DSH Desktop 使用的 profile 名）
-dsh plugin --profile desktop add .\dsh-autoconfig-0.2.1.tgz
+dsh plugin --profile desktop add .\dsh-autoconfig-1.0.0.tgz
 ```
 
 若 `dsh` 不在 PATH，请使用 DSH 安装目录中的 `dsh`/`dsh.cmd`，或通过官方 npm 包执行：
@@ -192,6 +182,9 @@ session closed 2026-10-27T15:20:00.000Z exit=0 bytes=12345
 ## 安全说明
 
 - SSH 主机密钥校验默认关闭（`hostVerifier: () => true`）。网络设备的自签名/经常重置的主机密钥使 TOFU 很难维护；请仅在可信管理网络中使用，或按需在 `src/transport-ssh.js` 中接入 known_hosts。
+- **配置计划批准模型**：默认的“对话批准”由 Agent 调用 `plan_approve` 完成，属于流程性防护，不是强制访问控制。`plan_execute` 虽然会校验批准哈希，但批准动作本身仍由 Agent 发起；在提示词注入、模型策略偏差或工具编排错误时，存在未经操作者真实批准即写入配置的可能。
+- **更严格的写权限门禁**：在 `~/.dsh/autoconfig-rag.json` 中设置 `"requirePanelApproval": true`，宿主会拒绝 `plan_approve`，只有右侧「计划」抽屉中由操作者点击的批准才能写入哈希。更严格的做法是移除或禁用 Agent 的 `plan_execute` 工具，仅保留前端执行。即使如此，若 Agent 能直接访问宿主 HTTP 接口，仍不能视为密码学意义上的安全边界。
+- **最终边界**：生产环境应通过网络设备侧的 AAA、命令授权/分级、ACL 和变更审计限制实际写权限；插件侧的批准机制只用于降低误操作与误编排风险。
 - 凭据只在连接时从面板/工具传入，不写入日志、不返回给模型；但会存在于 DSH 进程内存和浏览器的连接表单中。
 - 会话栏密码保存在 DSH 凭据库（`ctx.credentials`，引用名形如 `DSH_AUTOCONFIG_..._PASSWORD`），不写入 `~/.dsh/autoconfig-profiles.json`；删除会话时同时删除对应凭据。AI 工具发起的连接只记录地址，不保存密码。
 - 所有设备命令由操作者或 AI 发起，插件本身不做命令白名单；请通过 DSH 权限与设备侧 AAA 控制风险。

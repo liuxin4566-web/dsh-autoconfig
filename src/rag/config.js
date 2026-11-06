@@ -18,6 +18,7 @@ export const RAG_DEFAULTS = Object.freeze({
   autoStart: true,
   autoCollect: true,
   embedder: "on",
+  requirePanelApproval: false,
   port: 0
 });
 
