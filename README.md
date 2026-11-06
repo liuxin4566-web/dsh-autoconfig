@@ -89,6 +89,8 @@ dsh plugin --profile desktop add dsh-autoconfig
 > **0.2.5 升级提示**：修复 H3C/Huawei 输出行尾 `\r\r\n` 导致所有设备行被当作“回车进度行”跳过的问题；这是关键词高亮一直不显示的根因。
 >
 > **0.2.6 升级提示**：CHM 上传/建索引完善：sidecar 重启后自动整理“building”状态（已落盘则恢复 ready，否则标记失败可重建），并阻止同一文档重复排队构建。
+>
+> **0.2.7 升级提示**：修复预览按钮报 `Manifest.get() takes 2 positional arguments but 3 were given`。
 
 ### 方式二：GitHub 源码
 

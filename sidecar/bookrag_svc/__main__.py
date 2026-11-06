@@ -98,7 +98,7 @@ def main(argv: list[str] | None = None) -> None:
         "event": "ready",
         "port": port,
         "pid": os.getpid(),
-        "version": "0.2.6",
+        "version": "0.2.7",
         "dataDir": str(settings.data_dir),
         "model": embedder.status(),
         "reranker": reranker.status(),

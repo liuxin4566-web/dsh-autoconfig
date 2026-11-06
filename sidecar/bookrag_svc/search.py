@@ -323,7 +323,7 @@ class Registry:
         nodes = index.nodes[: max(1, min(limit, 200))]
         return {
             "docId": doc_id,
-            "title": self.manifest.get(doc_id, {}).get("title"),
+            "title": (self.manifest.get(doc_id) or {}).get("title"),
             "nodes": [{"id": node["id"], "section": " > ".join(node.get("section_path") or []), "locator": _locator(node), "text": node["text"][:600]} for node in nodes],
             "stats": index.stats(),
         }
